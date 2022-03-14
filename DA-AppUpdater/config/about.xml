@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<app>
+    <name>DA App Updater (DAAU)</name>
+    <version>1.0.0</version>
+    <author>Doherty Associates</author>
+    <info>https://github.com/DohertyAssociates/DA-AppUpdater</info>
+    <attrib>Based on work by Romanitho/Winget-AutoUpdate</attrib>
+</app>
