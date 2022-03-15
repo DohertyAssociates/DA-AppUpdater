@@ -79,52 +79,98 @@ Write-Host "Current script timestamp: $(Get-Date)"
 
 <# FUNCTIONS #>
 
-function Check-Prerequisites{
+function Confirm-PrereqVC{
     #Check if Visual C++ 2019 installed
-    $app = "Microsoft Visual C++*2019*"
-    $path = Get-Item HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*, HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall\* | Where-Object { $_.GetValue("DisplayName") -like $app}
+    $VCPath = Get-Item HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*, HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall\* | Where-Object { $_.GetValue("DisplayName") -like "Microsoft Visual C++*2019*"}
     
-    #If not installed, ask for installation
-    if (!($path)){
-        #If -silent option, force installation
-        if ($Silent){
-            $InstallApp = "y"
-        }
-        else{
-            #Ask for installation
-            while("y","n" -notcontains $InstallApp){
-	            $InstallApp = Read-Host "[Prerequisite for Winget] Microsoft Visual C++ 2019 is not installed. Would you like to install it? [Y/N]"
+    If ($VCPath) {
+        Try {
+            If((Get-CimInStance Win32_OperatingSystem).OSArchitecture -like "*64*") {
+                $OSArch = "x64"
             }
-        }
-        if ($InstallApp -eq "y"){
-            try{
-                if((Get-CimInStance Win32_OperatingSystem).OSArchitecture -like "*64*"){
-                    $OSArch = "x64"
-                }
-                else{
-                    $OSArch = "x86"
-                }
-                Write-host "Downloading VC_redist.$OSArch.exe..."
-                $SourceURL = "https://aka.ms/vs/16/release/VC_redist.$OSArch.exe"
-                $Installer = $WingetUpdatePath + "\VC_redist.$OSArch.exe"
-                $ProgressPreference = 'Continue'
-                $Client = New-Object System.Net.WebClient
-                $Client.DownloadFile($SourceURL, $Installer)
-                Write-host "Installing VC_redist.$OSArch.exe..."
-                Start-Process -FilePath $Installer -Args "/quiet /norestart" -Wait
-                Remove-Item $Installer -ErrorAction Ignore
-                Write-host "MS Visual C++ 2015-2019 installed successfully" -ForegroundColor Green
+            Else {
+                $OSArch = "x86"
             }
-            catch{
-                Write-host "MS Visual C++ 2015-2019 installation failed." -ForegroundColor Red
+            Write-Host "Downloading VC_redist.$OSArch.exe..."
+            $SourceURL = "https://aka.ms/vs/16/release/VC_redist.$OSArch.exe"
+            $Installer = $WingetUpdatePath + "\VC_redist.$OSArch.exe"
+            $ProgressPreference = 'Continue'
+            $Client = New-Object System.Net.WebClient
+            $Client.DownloadFile($SourceURL, $Installer)
+            Write-Host "Installing VC_redist.$OSArch.exe..."
+            Start-Process -FilePath $Installer -Args "/quiet /norestart" -Wait
+            Remove-Item $Installer -ErrorAction Ignore
+            Write-Host "MS Visual C++ 2015-2019 installed successfully" -ForegroundColor Green
+        }
+        Catch {
+                Write-Host "MS Visual C++ 2015-2019 installation failed" -ForegroundColor Red
                 Start-Sleep 3
             }
         }
     }
-    else{
-        Write-Host "Prerequisites checked. OK" -ForegroundColor Green
+    Else {
+        Write-Host "VC++ 2015-2019 already installed" -ForegroundColor Green
+}
+
+function Confirm-PrereqWinGet{
+    $WindowsAppsPath = $env:SystemDrive + "\Program Files\WindowsApps"
+    $AppInstallerFolders = (Get-ChildItem -Path $WindowsAppsPath | Where-Object { $_.Name -like "Microsoft.DesktopAppInstaller_*_x64__8wekyb3d8bbwe" } | Select-Object Name)
+    $AppInstallerFound = $False
+    If ($AppInstallerFolders) {
+        ForEach ($FolderName in $AppInstallerFolders) {
+        $AppFilePath = (Join-Path -path $WindowsAppsPath -ChildPath $FolderName.Name | Join-Path -ChildPath "AppInstallerCLI.exe")
+            If (Test-Path -Path $AppFilePath) {
+                $AppInstallerFound = $True
+                }
+            Else{
+                $AppFilePath = (Join-Path -path $WindowsAppsPath -ChildPath $FolderName.Name | Join-Path -ChildPath "winget.exe")
+                    If (Test-Path -Path $AppFilePath) {
+                        $AppInstallerFound = $True
+                }
+            }
+        }
+    }
+    If ($AppInstallerFound) {
+        Write-Verbose "App Installer is already present"
+        $WingetInstall = Get-AppxProvisionedPackage -Online | Where-Object {$_.DisplayName –eq “Microsoft.DesktopAppInstaller”}
+        Return $True 
+    }
+    Else{
+        Write-Verbose "App Installer not Installed"
+        Return $False
     }
 }
+
+function Install-WinGet{
+        #Download WinGet MSIXBundle
+        Write-Host "Downloading WinGet..."
+        $WinGetURL = "https://aka.ms/getwinget"
+        $WebClient=New-Object System.Net.WebClient
+        $WebClient.DownloadFile($WinGetURL, "$PSScriptRoot\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle")
+    
+        #Install WinGet MSIXBundle
+        Write-host "Installing MSIXBundle for App Installer..."
+        Add-AppxProvisionedPackage -Online -PackagePath "$PSScriptRoot\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle" -SkipLicense
+    
+        #Check Package Install
+        Write-Host "Checking Package Install"
+        $TestWinGet = Get-AppxProvisionedPackage -Online | Where-Object {$_.DisplayName –eq “Microsoft.DesktopAppInstaller”}
+            If($TestWinGet.DisplayName) {
+                Write-Host "WinGet Installed"
+                Remove-Item -Path "$PSScriptRoot\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle" -Force -ErrorAction Continue
+                Return $True
+            }
+            Else {
+                Write-Host "WinGet Not Installed"
+                Return $False
+            }
+}
+
+function Invoke-MSStoreUpdate{
+    Write-Host "Attempting to force a Microsoft Store Update"
+    Get-CimInstance -Namespace "Root\cimv2\mdm\dmmap" -ClassName "MDM_EnterpriseModernAppManagement_AppManagement01" | Invoke-CimMethod -MethodName UpdateScanMethod
+}
+
 
 function Install-DAAppUpdater{
     try{
@@ -133,9 +179,8 @@ function Install-DAAppUpdater{
             New-Item -ItemType Directory -Force -Path $DAAUPath
         }
         Copy-Item -Path "$PSScriptRoot\DA-AppUpdater\*" -Destination $DAAUPath -Recurse -Force -ErrorAction SilentlyContinue
-        Copy-Item -Path "$PSScriptRoot\excluded_apps.txt" -Destination $DAAUPath -Recurse -Force -ErrorAction SilentlyContinue
 
-        # Set dummy regkeys for notification name and icon
+        # Set regkeys for notification name and icon
         & reg add "HKCR\AppUserModelId\Windows.SystemToast.DAAU.Notification" /v DisplayName /t REG_EXPAND_SZ /d "Doherty App Updater" /f | Out-Null
         & reg add "HKCR\AppUserModelId\Windows.SystemToast.DAAU.Notification" /v IconUri /t REG_EXPAND_SZ /d $DAAUPath\icons\DAToastIcon.png /f | Out-Null
 
@@ -168,10 +213,10 @@ function Install-DAAppUpdater{
 "@
         $ConfigXML.Save("$DAAUPath\config\config.xml")
 
-        Write-host "`nInstallation succeeded!" -ForegroundColor Green
-        Start-sleep 1
+        Write-Host "`nInstallation succeeded!" -ForegroundColor Green
+        Start-Sleep 1
         
-        #Run Winget ?
+        #Run Winget Immediately
         Start-DAAppUpdater
     }
     catch{
@@ -181,35 +226,6 @@ function Install-DAAppUpdater{
     }
 }
 
-function Check-WingetVersion{
-$WingetMinVer = [System.Version] '1.17.10271.0'
-$WingetInstalledVer = [System.Version](
-    $(
-        Try {
-            if ([System.Security.Principal.WindowsIdentity]::GetCurrent().'User'.'Value' -eq 'S-1-5-18') {
-                $(
-                    [string](
-                        (Get-Item -Path ('{0}\WindowsApps\Microsoft.DesktopAppInstaller_*_x64__8wekyb3d8bbwe' -f $env:ProgramW6432)).'FullName' | Select-Object -First 1
-                    )
-                ).Split('_')[-4]
-            }
-            else {
-                (Get-AppxPackage -Name 'Microsoft.DesktopAppInstaller').'Version'
-            }
-        }
-        Catch {
-            '0.0.0'
-        }
-    )
-)
-# Return results
-[bool]($WingetInstalledVer -ge $WingetMinVer)
-}
-
-function Invoke-MSStoreUpdate{
-    Write-Host "Attempting to force a Microsoft Store Update"
-    Get-CimInstance -Namespace "Root\cimv2\mdm\dmmap" -ClassName "MDM_EnterpriseModernAppManagement_AppManagement01" | Invoke-CimMethod -MethodName UpdateScanMethod
-}
 function Start-DAAppUpdater{
     #If -DoNotUpdate is true, skip.
     if (!($DoNotUpdate)){
@@ -248,43 +264,45 @@ Write-host "#                                 #"
 Write-host "###################################`n"
 Write-host "Installing to $DAAUPath\"
 
-Check-Prerequisites
+Try {
+    #Attempt MS Store Update
+    Invoke-MSStoreUpdate
+    Start-Sleep -Seconds 60
 
-Try{
-    $IsWinget=Check-WingetVersion
-    if($IsWinget -ne $True){
-        Invoke-MSStoreUpdate
-        Write-Host "MS Store Update attempted. Waiting 60 seconds"
-        Start-Sleep -Seconds 60
-        Write-Host "Checking to see if we can install now"
-        $IsWinget=Check-WingetVersion
-        if($IsWinget -ne $True){
-            Write-Error "Winget is not installed. Exiting with retry code"
-            Start-Sleep 3
-            Exit 1618 
-        }
-        else{
-            Write-Host "Winget Installed - Version $($WingetInstalledVer)"
-            Write-Host "Installing DA App Updater"
-            Install-DAAppUpdater
-            Write-Host "Install complete. Exiting with success code"
-            Start-Sleep 3
-            Exit 0
-        }
-    }
-    else {
-        Write-Host "Winget Installed - Version $($WingetInstalledVer)"
+    #Check Pre-Reqs
+    Confirm-PrereqVC
+    $CheckWinGet = Confirm-PrereqWinGet
+
+    #Start Install
+    If($CheckWinGet -eq $True) {
+        Write-Host "Winget Installed - Version $($WingetInstall.Version)"
         Write-Host "Installing DA App Updater"
         Install-DAAppUpdater
         Write-Host "Install complete. Exiting with success code"
         Start-Sleep 3
         Exit 0
     }
+    Else {
+        $InstallWinGet = Install-WinGet
+            If($InstallWinGet -eq $True) {
+                Write-Host "Winget Installed - Version $($WingetInstall.Version)"
+                Write-Host "Installing DA App Updater"
+                Install-DAAppUpdater
+                Write-Host "Install complete. Exiting with success code"
+                Start-Sleep 3
+                Exit 0  
+            }
+            Else {
+                Write-Error "Winget is not installed. Exiting with retry code"
+                Start-Sleep 3
+                Exit 1618 
+            }
+    }
 }
-Catch{
-    Write-Error "Winget is not installed. Exiting with retry code"
+Catch {
+    Write-Error "$_.Exception.Message"
     Start-Sleep 3
-    Exit 1618
+    Exit 1618 
 }
 
 Stop-Transcript
