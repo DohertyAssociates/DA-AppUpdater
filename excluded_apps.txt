@@ -1,7 +1,0 @@
-Google.Chrome
-Mozilla.Firefox
-Microsoft.Edge
-Microsoft.EdgeWebView2Runtime
-Microsoft.Office
-Microsoft.OneDrive
-Microsoft.Teams

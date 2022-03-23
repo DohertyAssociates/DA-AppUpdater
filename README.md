@@ -20,7 +20,7 @@ Toast notification text and locales can be edited via the \locale folder
 ### When does the script run?
 The created scheduled task is set to run:
 - At user logon
-- At 6AM eveyday (with the -StartWhenAvailable option to be sure it is run at least once a day)
+- At 6AM every day (with the -StartWhenAvailable flag on the scheduled task to be sure it is run at least once a day)
 This way, even without connected user, powered on computers get applications updated anyway.
 ### Log location
 You can find logs in %ProgramData%\DA-AppUpdater\logs.
