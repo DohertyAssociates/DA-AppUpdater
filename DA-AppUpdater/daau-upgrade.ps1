@@ -16,10 +16,10 @@ Get-NotifLocale
 
 #Check network connectivity
 if (Test-Network){
-    #Check if WAU update feature is enabled
+    #Check if DAAU update feature is enabled
     $DAAUAutoUpdateEnabled = Get-DAAUUpdateStatus
-    #If yes then check WAU update
-    if ($WAUAutoUpdateEnabled){
+    #If yes then check DAAU update
+    if ($DAAUAutoUpdateEnabled){
         #Get Current Version
         $DAAUCurrentVersion = Get-DAAUCurrentVersion
         #Get Available Version
