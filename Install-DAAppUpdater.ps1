@@ -28,19 +28,19 @@ param(
     [Parameter(Mandatory=$False)] [Alias('S')] [Switch] $Silent = $false,
     [Parameter(Mandatory=$False)] [Alias('Path')] [String] $DAAUPath = "$env:ProgramData\DA-AppUpdater",
     [Parameter(Mandatory=$False)] [Switch] $DoNotUpdate = $false,
-    [Parameter(Mandatory=$False)] [Switch] $DisableWAUAutoUpdate = $false
+    [Parameter(Mandatory=$False)] [Switch] $DisableDAAUAutoUpdate = $false
 )
 
-<# VARIABLES #>
+<# FUNCTIONS #>
+function Start-DALogging{
 $TimeStamp = (Get-Date -f yyyy-MM-dd_HH-mm)
 $DALogsFolder = "$env:systemdrive\ProgramData\Doherty Associates\Logs\"
 $LogFile = "DAAppUpdater-$env:COMPUTERNAME-$TimeStamp.log"
 
-<# DA Logging #>
 # Create Tech Directory
 if (!(test-path "$env:systemdrive\Tech")) {
     Write-Host "Creating Tech Directory"
-    new-item -itemtype "directory" -path "$env:systemdrive\Tech" | out-null
+    New-Item -itemtype "directory" -path "$env:systemdrive\Tech" | out-null
 }
 else {
     write-host "Tech Directory Already exists"
@@ -49,7 +49,7 @@ else {
 # Create Temp Directory
 if (!(test-path "$env:systemdrive\Temp")) {
     Write-Host "Creating Temp Directory"
-    new-item -itemtype "directory" -path "$env:systemdrive\Temp" | out-null
+    New-Item -itemtype "directory" -path "$env:systemdrive\Temp" | out-null
 }
 else {
     write-host "Temp Directory Already exists"
@@ -58,7 +58,7 @@ else {
 # Create ProgramData\Doherty Associates Directory
 if (!(test-path "$env:systemdrive\programdata\Doherty Associates")) {
     Write-Host "Creating ProgramData\Doherty Associates Directory"
-    new-item -itemtype "directory" -path "$env:systemdrive\ProgramData\Doherty Associates\" | out-null
+    New-Item -itemtype "directory" -path "$env:systemdrive\ProgramData\Doherty Associates\" | out-null
 }
 else {
     write-host "ProgramData\Doherty Associates Already exists"
@@ -67,7 +67,7 @@ else {
 # Create ProgramData\Doherty Associates\Logs Directory
 if (!(test-path $dalogsfolder)) {
     Write-Host "Creating ProgramData\Doherty Associates\Logs Directory"
-    new-item -itemtype "directory" -path "$env:systemdrive\ProgramData\Doherty Associates\Logs\" | out-null
+    New-Item -itemtype "directory" -path "$env:systemdrive\ProgramData\Doherty Associates\Logs\" | out-null
 }
 else {
     write-host "ProgramData\Doherty Associates\Logs Already exists"
@@ -76,40 +76,52 @@ else {
 # Set transcript logging path
 Start-Transcript -path $DALogsFolder\$LogFile -append
 Write-Host "Current script timestamp: $(Get-Date)"
-
-<# FUNCTIONS #>
+}
 
 function Confirm-PrereqVC{
     #Check if Visual C++ 2019 installed
-    $VCPath = Get-Item HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*, HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall\* | Where-Object { $_.GetValue("DisplayName") -like "Microsoft Visual C++*2019*"}
+    $app = "Microsoft Visual C++*2019*"
+    $path = Get-Item HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*, HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall\* | Where-Object { $_.GetValue("DisplayName") -like $app}
     
-    If ($VCPath) {
-        Try {
-            If((Get-CimInStance Win32_OperatingSystem).OSArchitecture -like "*64*") {
-                $OSArch = "x64"
-            }
-            Else {
-                $OSArch = "x86"
-            }
-            Write-Host "Downloading VC_redist.$OSArch.exe..."
-            $SourceURL = "https://aka.ms/vs/16/release/VC_redist.$OSArch.exe"
-            $Installer = $WingetUpdatePath + "\VC_redist.$OSArch.exe"
-            $ProgressPreference = 'Continue'
-            $Client = New-Object System.Net.WebClient
-            $Client.DownloadFile($SourceURL, $Installer)
-            Write-Host "Installing VC_redist.$OSArch.exe..."
-            Start-Process -FilePath $Installer -Args "/quiet /norestart" -Wait
-            Remove-Item $Installer -ErrorAction Ignore
-            Write-Host "MS Visual C++ 2015-2019 installed successfully" -ForegroundColor Green
+    #If not installed, ask for installation
+    if (!($path)){
+        #If -silent option, force installation
+        if ($Silent){
+            $InstallApp = "y"
         }
-        Catch {
-                Write-Host "MS Visual C++ 2015-2019 installation failed" -ForegroundColor Red
+        else{
+            #Ask for installation
+            while("y","n" -notcontains $InstallApp){
+	            $InstallApp = Read-Host "[Prerequisite for Winget] Microsoft Visual C++ 2019 is not installed. Would you like to install it? [Y/N]"
+            }
+        }
+        if ($InstallApp -eq "y"){
+            try{
+                if((Get-CimInStance Win32_OperatingSystem).OSArchitecture -like "*64*"){
+                    $OSArch = "x64"
+                }
+                else{
+                    $OSArch = "x86"
+                }
+                Write-host "Downloading VC_redist.$OSArch.exe..."
+                $SourceURL = "https://aka.ms/vs/16/release/VC_redist.$OSArch.exe"
+                $Installer = $WingetUpdatePath + "\VC_redist.$OSArch.exe"
+                $ProgressPreference = 'SilentlyContinue'
+                Invoke-WebRequest $SourceURL -OutFile (New-Item -Path $Installer -Force)
+                Write-host "Installing VC_redist.$OSArch.exe..."
+                Start-Process -FilePath $Installer -Args "/quiet /norestart" -Wait
+                Remove-Item $Installer -ErrorAction Ignore
+                Write-host "MS Visual C++ 2015-2019 installed successfully" -ForegroundColor Green
+            }
+            catch{
+                Write-host "MS Visual C++ 2015-2019 installation failed." -ForegroundColor Red
                 Start-Sleep 3
             }
         }
     }
-    Else {
-        Write-Host "VC++ 2015-2019 already installed" -ForegroundColor Green
+    else{
+        Write-Host "Prerequisites checked. OK" -ForegroundColor Green
+    }
 }
 
 function Confirm-PrereqWinGet{
@@ -132,7 +144,7 @@ function Confirm-PrereqWinGet{
     }
     If ($AppInstallerFound) {
         Write-Verbose "App Installer is already present"
-        $WingetInstall = Get-AppxProvisionedPackage -Online | Where-Object {$_.DisplayName –eq “Microsoft.DesktopAppInstaller”}
+        $Global:WingetInstall = Get-AppxProvisionedPackage -Online | Where-Object {$_.DisplayName -eq “Microsoft.DesktopAppInstaller”}
         Return $True 
     }
     Else{
@@ -154,7 +166,7 @@ function Install-WinGet{
     
         #Check Package Install
         Write-Host "Checking Package Install"
-        $TestWinGet = Get-AppxProvisionedPackage -Online | Where-Object {$_.DisplayName –eq “Microsoft.DesktopAppInstaller”}
+        $TestWinGet = Get-AppxProvisionedPackage -Online | Where-Object {$_.DisplayName -eq “Microsoft.DesktopAppInstaller”}
             If($TestWinGet.DisplayName) {
                 Write-Host "WinGet Installed"
                 Remove-Item -Path "$PSScriptRoot\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle" -Force -ErrorAction Continue
@@ -193,10 +205,10 @@ function Install-DAAppUpdater{
 
         # Set up the task, and register it
         $task = New-ScheduledTask -Action $taskAction -Principal $taskUserPrincipal -Settings $taskSettings -Trigger $taskTrigger2,$taskTrigger1
-        Register-ScheduledTask -TaskName 'DA App Updater' -InputObject $task -Force
+        Register-ScheduledTask -TaskName 'DA-AppUpdater' -InputObject $task -Force
 
         # Settings for the scheduled task for Notifications
-        $taskAction = New-ScheduledTaskAction -Execute "wscript.exe" -Argument "`"$($DAAUPath)\Invisible.vbs`" `"powershell.exe -ExecutionPolicy Bypass -File `"`"`"$($DAAUPath)\winget-notify.ps1`"`""
+        $taskAction = New-ScheduledTaskAction -Execute "wscript.exe" -Argument "`"$($DAAUPath)\Invisible.vbs`" `"powershell.exe -ExecutionPolicy Bypass -File `"`"`"$($DAAUPath)\daau-notify.ps1`"`""
         $taskUserPrincipal = New-ScheduledTaskPrincipal -GroupId S-1-5-11
         $taskSettings = New-ScheduledTaskSettingsSet -Compatibility Win8 -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit 00:05:00
 
@@ -223,6 +235,27 @@ function Install-DAAppUpdater{
         Write-host "`nInstallation failed! Run me with admin rights" -ForegroundColor Red
         Start-sleep 1
         return $False
+    }
+}
+
+function Set-DAAUNotificationPriority{
+    $LoggedInUser = Get-WMIObject -class Win32_ComputerSystem | Select-Object -ExpandProperty username
+    If($LoggedInUser -contains "defaultuser0") {
+        Write-Host "Autopilot deployment defaultuser0 detected. Loading Default User registry hive."
+        reg load HKU\Default C:\Users\Default\NTUSER.DAT
+        Write-Host "Creating default user notification registry keys"
+        New-Item -Path "HKU:\Default\SOFTWARE\Microsoft\Windows\CurrentVersion\Notifications\Settings\Windows.SystemToast.DAAU.Notification"
+        reg unload HKU\Default
+    }
+    Else {
+        $objUser = New-Object System.Security.Principal.NTAccount($LoggedInUser)
+        $strSID = $objUser.Translate([System.Security.Principal.SecurityIdentifier])
+        Write-Host "Standard deployment detected. Adding registry keys to logged-in user hive."
+        New-PSDrive -Name "HKU" -PSProvider "Registry" -Root "HKEY_USERS"
+        Set-Location -Path "HKU:\$strSID\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings"
+        New-Item -Path "HKU:\$strSID\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings" -Name "Windows.SystemToast.DAAU.Notification"
+        New-ItemProperty "HKU:\$strSID\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings\Windows.SystemToast.DAAU.Notification" -Name "Rank" -Value "99" -PropertyType Dword
+        Remove-PSDrive -Name "HKU"
     }
 }
 
@@ -256,6 +289,7 @@ function Start-DAAppUpdater{
 
 
 <# MAIN #>
+Start-DALogging
 
 Write-host "###################################"
 Write-host "#                                 #"
@@ -278,6 +312,8 @@ Try {
         Write-Host "Winget Installed - Version $($WingetInstall.Version)"
         Write-Host "Installing DA App Updater"
         Install-DAAppUpdater
+        Write-Host "Configuring Notification Priority"
+        Set-DAAUNotificationPriority
         Write-Host "Install complete. Exiting with success code"
         Start-Sleep 3
         Exit 0
@@ -288,6 +324,8 @@ Try {
                 Write-Host "Winget Installed - Version $($WingetInstall.Version)"
                 Write-Host "Installing DA App Updater"
                 Install-DAAppUpdater
+                Write-Host "Configuring Notification Priority"
+                Set-DAAUNotificationPriority
                 Write-Host "Install complete. Exiting with success code"
                 Start-Sleep 3
                 Exit 0  
