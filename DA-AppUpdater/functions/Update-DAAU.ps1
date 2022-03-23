@@ -1,4 +1,3 @@
-
 function Update-DAAU ($VersionToUpdate){
     #Send available update notification
     $Title = $NotifLocale.local.outputs.output[2].title -f "Doherty App Updater"
@@ -25,10 +24,10 @@ function Update-DAAU ($VersionToUpdate){
         Get-ChildItem -Path $location -Recurse | Unblock-File
         Write-Log "Unzip finished" "Green"
         $TempPath = (Resolve-Path "$location\*\DA-AppUpdater\")[0].Path
-	$TempPath = (Resolve-Path "$location\*\DA-AppUpdater\")[0].Path
-	if ($TempPath){
-		Copy-Item -Path "$TempPath\*" -Destination "$WorkingDir\" -Recurse -Force
-	}
+        $TempPath = (Resolve-Path "$location\*\DA-AppUpdater\")[0].Path
+	    if ($TempPath){
+		    Copy-Item -Path "$TempPath\*" -Destination "$WorkingDir\" -Recurse -Force
+	    }
         
         #Remove update zip file
         Write-Log "Cleaning temp files"
@@ -50,7 +49,7 @@ function Update-DAAU ($VersionToUpdate){
 
         #Rerun with newer version
 	    Write-Log "Re-run DAAU"
-        Start-Process powershell -ArgumentList "-NoProfile -ExecutionPolicy Bypass -Command `"$WorkingDir\winget-upgrade`""
+        Start-Process powershell -ArgumentList "-NoProfile -ExecutionPolicy Bypass -Command `"$WorkingDir\daau-upgrade.ps1`""
         exit
     }
     catch{

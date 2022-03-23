@@ -220,7 +220,7 @@ function Install-DAAppUpdater{
         [xml]$ConfigXML = @"
 <?xml version="1.0"?>
 <app>
-    <DAAUautoupdate>$(!($DisableDAAUAutoUpdate))</DAAUautoupdate>
+    <DAAUAutoUpdate>$(!($DisableDAAUAutoUpdate))</DAAUAutoUpdate>
 </app>
 "@
         $ConfigXML.Save("$DAAUPath\config\config.xml")
