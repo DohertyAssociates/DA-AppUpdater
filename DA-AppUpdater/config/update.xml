@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urls>
+    <api>
+        <baseurl>https://api.github.com/repos/DohertyAssociates/DA-AppUpdater/</baseurl>
+    </api>
+    <git>
+        <tagarchiveurl>https://github.com/DohertyAssociates/DA-AppUpdater/archive/refs/tags/</tagarchiveurl>
+    </git>
+</urls>

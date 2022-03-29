@@ -13,8 +13,10 @@ function Update-DAAU ($VersionToUpdate){
         New-Item $ZipFile -ItemType File -Force | Out-Null
 
         #Download the zip 
+        #Get update URL definitions
+        [xml]$Update = Get-Content "$WorkingDir\config\update.xml" -Encoding UTF8 -ErrorAction SilentlyContinue
         Write-Log "Downloading the GitHub Repository version $DAAUAvailableVersion" "Cyan"
-        $DAAUUpdateURL = "https://github.com/DohertyAssociates/DA-AppUpdater/archive/refs/tags/v$($DAAUAvailableVersion).zip/"
+        $DAAUUpdateURL = $Update.urls.git.tagarchiveurl + "v$($DAAUAvailableVersion).zip/"
         $WebClient=New-Object System.Net.WebClient
         $WebClient.DownloadFile($DAAUUpdateURL, "$WorkingDir\DAAU_update.zip")
         Write-Log "Download finished" "Green"

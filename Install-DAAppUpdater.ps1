@@ -19,6 +19,9 @@ Do not run DA-AppUpdater after installation. By default, DA-AppUpdater is run ju
 .PARAMETER DisableDAAUAutoUpdate
 Disable DA-AppUpdater update checking. By default, DAAU will auto update if new release is available on Github.
 
+.PARAMETER DisableDAAUPreRelease
+Disable DA-AppUpdater update checking for releases marked as "pre-release". By default, DAAU will auto update to stable releases.
+
 .EXAMPLE
 .\Install-DAAppUpdater.ps1 -Silent -DoNotUpdate
 #>
@@ -28,7 +31,8 @@ param(
     [Parameter(Mandatory=$False)] [Alias('S')] [Switch] $Silent = $false,
     [Parameter(Mandatory=$False)] [Alias('Path')] [String] $DAAUPath = "$env:ProgramData\DA-AppUpdater",
     [Parameter(Mandatory=$False)] [Switch] $DoNotUpdate = $false,
-    [Parameter(Mandatory=$False)] [Switch] $DisableDAAUAutoUpdate = $false
+    [Parameter(Mandatory=$False)] [Switch] $DisableDAAUAutoUpdate = $false,
+    [Parameter(Mandatory=$False)] [Switch] $DisableDAAUPreRelease = $false
 )
 
 <# FUNCTIONS #>
@@ -183,7 +187,6 @@ function Invoke-MSStoreUpdate{
     Get-CimInstance -Namespace "Root\cimv2\mdm\dmmap" -ClassName "MDM_EnterpriseModernAppManagement_AppManagement01" | Invoke-CimMethod -MethodName UpdateScanMethod
 }
 
-
 function Install-DAAppUpdater{
     try{
         #Copy files to install location
@@ -221,6 +224,7 @@ function Install-DAAppUpdater{
 <?xml version="1.0"?>
 <app>
     <DAAUAutoUpdate>$(!($DisableDAAUAutoUpdate))</DAAUAutoUpdate>
+    <DAAUPreRelease>$(!($DisableDAAUPreRelease))</DAAUPreRelease>
 </app>
 "@
         $ConfigXML.Save("$DAAUPath\config\config.xml")
