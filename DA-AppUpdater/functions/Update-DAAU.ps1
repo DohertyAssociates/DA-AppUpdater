@@ -1,7 +1,7 @@
 function Update-DAAU ($VersionToUpdate){
     #Send available update notification
     $Title = $NotifLocale.local.outputs.output[2].title -f "Doherty App Updater"
-    $Message = $NotifLocale.local.outputs.output[2].message -f $CurrentVersion, $LatestVersion.Replace("v","")
+    $Message = $NotifLocale.local.outputs.output[2].message -f $DAAUCurrentVersion, $DAAUAvailableVersion.Replace("v","")
     $MessageType = "info"
     $Balise = "Doherty App Updater"
     Start-NotifTask $Title $Message $MessageType $Balise
