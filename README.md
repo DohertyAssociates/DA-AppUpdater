@@ -6,13 +6,14 @@ Customised from work originally created by [Romanitho](https://github.com/Romani
 You can exclude apps from update job (for instance, apps you want to keep at a specific version or apps with built-in auto-update):
 Winget App ID's needing to be excluding from the autoupdate will need to be added to 'excluded_apps.txt'.
 Default Exclusions are set for:
-* Google.Chrome
-* Mozilla.Firefox
-* Microsoft.Edge
-* Microsoft.EdgeWebView2Runtime
-* Microsoft.Office
-* Microsoft.OneDrive
-* Microsoft.Teams
+* Microsoft Edge
+* Microsoft EdgeWebView2Runtime
+* Microsoft Office
+* Microsoft OneDrive
+* Microsoft Teams
+* Google Chrome (Including Dev and Beta branches)
+* Mozilla Firefox (Including Beta and ESR branches)
+* TeamViewer & TeamViewer Host
 ### Default install location
 By default, scripts and components will be placed in %ProgramData%\DA-AppUpdater. You can change this with script arguments.
 ### Notification language

@@ -19,6 +19,9 @@ Do not run DA-AppUpdater after installation. By default, DA-AppUpdater is run ju
 .PARAMETER DisableDAAUAutoUpdate
 Disable DA-AppUpdater update checking. By default, DAAU will auto update if new release is available on Github.
 
+.PARAMETER DisableDAAUPreRelease
+Disable DA-AppUpdater update checking for releases marked as "pre-release". By default, DAAU will auto update to stable releases.
+
 .EXAMPLE
 .\Install-DAAppUpdater.ps1 -Silent -DoNotUpdate
 #>
@@ -28,7 +31,8 @@ param(
     [Parameter(Mandatory=$False)] [Alias('S')] [Switch] $Silent = $false,
     [Parameter(Mandatory=$False)] [Alias('Path')] [String] $DAAUPath = "$env:ProgramData\DA-AppUpdater",
     [Parameter(Mandatory=$False)] [Switch] $DoNotUpdate = $false,
-    [Parameter(Mandatory=$False)] [Switch] $DisableDAAUAutoUpdate = $false
+    [Parameter(Mandatory=$False)] [Switch] $DisableDAAUAutoUpdate = $false,
+    [Parameter(Mandatory=$False)] [Switch] $DisableDAAUPreRelease = $false
 )
 
 <# FUNCTIONS #>
@@ -144,7 +148,7 @@ function Confirm-PrereqWinGet{
     }
     If ($AppInstallerFound) {
         Write-Verbose "App Installer is already present"
-        $Global:WingetInstall = Get-AppxProvisionedPackage -Online | Where-Object {$_.DisplayName -eq “Microsoft.DesktopAppInstaller”}
+        $Script:WingetInstall = Get-AppxProvisionedPackage -Online | Where-Object {$_.DisplayName -eq “Microsoft.DesktopAppInstaller”}
         Return $True 
     }
     Else{
@@ -183,7 +187,6 @@ function Invoke-MSStoreUpdate{
     Get-CimInstance -Namespace "Root\cimv2\mdm\dmmap" -ClassName "MDM_EnterpriseModernAppManagement_AppManagement01" | Invoke-CimMethod -MethodName UpdateScanMethod
 }
 
-
 function Install-DAAppUpdater{
     try{
         #Copy files to install location
@@ -221,6 +224,7 @@ function Install-DAAppUpdater{
 <?xml version="1.0"?>
 <app>
     <DAAUAutoUpdate>$(!($DisableDAAUAutoUpdate))</DAAUAutoUpdate>
+    <DAAUPreRelease>$(!($DisableDAAUPreRelease))</DAAUPreRelease>
 </app>
 "@
         $ConfigXML.Save("$DAAUPath\config\config.xml")
@@ -252,10 +256,10 @@ function Set-DAAUNotificationPriority{
         $strSID = $objUser.Translate([System.Security.Principal.SecurityIdentifier])
         Write-Host "Standard deployment detected. Adding registry keys to logged-in user hive."
         New-PSDrive -Name "HKU" -PSProvider "Registry" -Root "HKEY_USERS"
-        Set-Location -Path "HKU:\$strSID\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings"
-        New-Item -Path "HKU:\$strSID\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings" -Name "Windows.SystemToast.DAAU.Notification"
-        New-ItemProperty "HKU:\$strSID\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings\Windows.SystemToast.DAAU.Notification" -Name "Rank" -Value "99" -PropertyType Dword
-        Remove-PSDrive -Name "HKU"
+        Set-Location -Path "HKU:\$($strSID.Value)\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings"
+        New-Item -Path "HKU:\$($strSID.Value)\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings" -Name "Windows.SystemToast.DAAU.Notification" -Force
+        New-ItemProperty "HKU:\$($strSID.Value)\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings\Windows.SystemToast.DAAU.Notification" -Name "Rank" -Value "99" -PropertyType Dword -Force
+        Remove-PSDrive -Name "HKU" -Force -ErrorAction Continue
     }
 }
 

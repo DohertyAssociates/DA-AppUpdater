@@ -15,19 +15,23 @@ Start-Init
 Get-NotifLocale
 
 #Check network connectivity
-if (Test-Network){
+If (Test-Network){
+    #Get Current Version
+    Get-DAAUCurrentVersion
     #Check if DAAU update feature is enabled
-    $DAAUAutoUpdateEnabled = Get-DAAUUpdateStatus
+    Get-DAAUUpdateStatus
     #If yes then check DAAU update
-    if ($DAAUAutoUpdateEnabled){
-        #Get Current Version
-        $DAAUCurrentVersion = Get-DAAUCurrentVersion
+    If ($true -eq $DAAUautoupdate){
         #Get Available Version
-        $DAAUAvailableVersion = Get-DAAUAvailableVersion
+        Get-DAAUAvailableVersion
         #Compare
-        if ($DAAUAvailableVersion -gt $DAAUCurrentVersion){
+        If ([version]$DAAUAvailableVersion -gt [version]$DAAUCurrentVersion){
             #If new version is available, update it
-            Update-DAAU $DAAUAvailableVersion
+            Write-Log "DAAU Available version: $DAAUAvailableVersion" "Yellow"
+            Update-DAAU
+        }
+        Else{
+            Write-Log "DAAU is up to date." "Green"
         }
     }
 
@@ -35,11 +39,11 @@ if (Test-Network){
     $toSkip = Get-ExcludedApps
 
     #Get outdated Winget packages
-    Write-Log "Checking available updates..." "yellow"
+    Write-Log "Checking application updates on Winget Repository..." "yellow"
     $outdated = Get-WingetOutdatedApps
 
     #Log list of app to update
-    foreach ($app in $outdated){
+    ForEach ($app in $outdated){
         #List available updates
         $Log = "Available update : $($app.Name). Current version : $($app.Version). Available version : $($app.AvailableVersion)."
         $Log | Write-host
@@ -50,9 +54,9 @@ if (Test-Network){
     $InstallOK = 0
 
     #For each app, notify and update
-    foreach ($app in $outdated){
+    ForEach ($app in $outdated){
 
-        if (-not ($toSkip -contains $app.Id) -and $($app.Version) -ne "Unknown"){
+        If (-not ($toSkip -contains $app.Id) -and $($app.Version) -ne "Unknown"){
 
             #Send available update notification
             Write-Log "Updating $($app.Name) from $($app.Version) to $($app.AvailableVersion)..." "Cyan"
@@ -70,14 +74,14 @@ if (Test-Network){
                 #Check if application updated properly
                 $CheckOutdated = Get-WingetOutdatedApps
                 $FailedToUpgrade = $false
-                foreach ($CheckApp in $CheckOutdated){
-                    if ($($CheckApp.Id) -eq $($app.Id)) {
+                ForEach ($CheckApp in $CheckOutdated){
+                    If ($($CheckApp.Id) -eq $($app.Id)) {
                         #If app failed to upgrade, run Install command
                         & $upgradecmd install --id $($app.Id) --accept-package-agreements --accept-source-agreements -h | Tee-Object -file $LogFile -Append
                         #Check if application installed properly
                         $CheckOutdated2 = Get-WingetOutdatedApps
-                        foreach ($CheckApp2 in $CheckOutdated2){
-                            if ($($CheckApp2.Id) -eq $($app.Id)) {
+                        ForEach ($CheckApp2 in $CheckOutdated2){
+                            If ($($CheckApp2.Id) -eq $($app.Id)) {
                                 $FailedToUpgrade = $true
                             }      
                         }
@@ -86,7 +90,7 @@ if (Test-Network){
             Write-Log "##########   WINGET UPGRADE PROCESS FINISHED FOR APPLICATION ID '$($App.Id)'   ##########" "Gray"   
 
             #Notify installation
-            if ($FailedToUpgrade -eq $false){   
+            If ($FailedToUpgrade -eq $false){   
                 #Send success updated app notification
                 Write-Log "$($app.Name) updated to $($app.AvailableVersion) !" "Green"
                 
@@ -99,7 +103,7 @@ if (Test-Network){
 
                 $InstallOK += 1
             }
-            else {
+            Else {
                 #Send failed updated app notification
                 Write-Log "$($app.Name) update failed." "Red"
                 
@@ -112,23 +116,23 @@ if (Test-Network){
             }
 		}
         #if current app version is unknown
-        elseif($($app.Version) -eq "Unknown"){
+        ElseIf($($app.Version) -eq "Unknown"){
             Write-Log "$($app.Name) : Skipped upgrade because current version is 'Unknown'" "Gray"
         }
         #if app is in "excluded list"
-        else{
+        Else{
             Write-Log "$($app.Name) : Skipped upgrade because it is in the excluded app list" "Gray"
         }
     }
 
-    if ($InstallOK -gt 0){
-        Write-Log "$InstallOK apps updated ! No more update." "Green"
+    If ($InstallOK -gt 0){
+        Write-Log "$InstallOK apps updated ! No more updates available." "Green"
     }
-    if ($InstallOK -eq 0){
-        Write-Log "No new update." "Green"
+    If ($InstallOK -eq 0){
+        Write-Log "No new updates available." "Green"
     }
 }
 
 #End
-Write-Log "End of process!" "Cyan"
+Write-Log "Process Complete" "Cyan"
 Start-Sleep 3

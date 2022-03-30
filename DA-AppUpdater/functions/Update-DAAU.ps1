@@ -7,14 +7,18 @@ function Update-DAAU ($VersionToUpdate){
     Start-NotifTask $Title $Message $MessageType $Balise
 
     #Run DAAU update
-    try{
+    Try{
         #Force to create a zip file 
         $ZipFile = "$WorkingDir\DAAU_update.zip"
         New-Item $ZipFile -ItemType File -Force | Out-Null
 
         #Download the zip 
-        Write-Log "Starting downloading the GitHub Repository version $VersionToUpdate"
-        Invoke-RestMethod -Uri "https://github.com/DohertyAssociates/DA-AppUpdater/archive/refs/tags/v$($VersionToUpdate).zip/" -OutFile $ZipFile
+        #Get update URL definitions
+        [xml]$Update = Get-Content "$WorkingDir\config\update.xml" -Encoding UTF8 -ErrorAction SilentlyContinue
+        Write-Log "Downloading the GitHub Repository version $DAAUAvailableVersion" "Cyan"
+        $DAAUUpdateURL = $Update.urls.git.tagarchiveurl + "v$($DAAUAvailableVersion).zip/"
+        $WebClient=New-Object System.Net.WebClient
+        $WebClient.DownloadFile($DAAUUpdateURL, "$WorkingDir\DAAU_update.zip")
         Write-Log "Download finished" "Green"
 
         #Extract Zip File
@@ -22,43 +26,42 @@ function Update-DAAU ($VersionToUpdate){
         $location = "$WorkingDir\DAAU_update"
         Expand-Archive -Path $ZipFile -DestinationPath $location -Force
         Get-ChildItem -Path $location -Recurse | Unblock-File
-        Write-Log "Unzip finished" "Green"
+        Write-Log "Updating DAAU" "Yellow"
         $TempPath = (Resolve-Path "$location\*\DA-AppUpdater\")[0].Path
-        $TempPath = (Resolve-Path "$location\*\DA-AppUpdater\")[0].Path
-	    if ($TempPath){
-		    Copy-Item -Path "$TempPath\*" -Destination "$WorkingDir\" -Recurse -Force
-	    }
+        If ($TempPath){
+            Copy-Item -Path "$TempPath\*" -Destination "$WorkingDir\" -Exclude "icons" -Recurse -Force
+        }
         
         #Remove update zip file
-        Write-Log "Cleaning temp files"
+        Write-Log "Done. Cleaning temp files" "Cyan"
         Remove-Item -Path $ZipFile -Force -ErrorAction SilentlyContinue
-        #Remove update folder
         Remove-Item -Path $location -Recurse -Force -ErrorAction SilentlyContinue
 
         #Set new version to about.xml
         [xml]$XMLconf = Get-content "$WorkingDir\config\about.xml" -Encoding UTF8 -ErrorAction SilentlyContinue
-        $XMLconf.app.version = $VersionToUpdate
+        $XMLconf.app.version = $DAAUAvailableVersion
         $XMLconf.Save("$WorkingDir\config\about.xml")
 
         #Send success Notif
-        $Title = $NotifLocale.local.outputs.output[3].title -f "Doherty App Updater"
-        $Message = $NotifLocale.local.outputs.output[3].message -f $LatestVersion
+        Write-Log "DAAU Update completed." "Green"
+        $Title = $NotifLocale.local.outputs.output[3].title -f "DA App Updater"
+        $Message = $NotifLocale.local.outputs.output[3].message -f $DAAUAvailableVersion
         $MessageType = "success"
-        $Balise = "Doherty App Updater"
+        $Balise = "DA App Updater"
         Start-NotifTask $Title $Message $MessageType $Balise
 
         #Rerun with newer version
 	    Write-Log "Re-run DAAU"
-        Start-Process powershell -ArgumentList "-NoProfile -ExecutionPolicy Bypass -Command `"$WorkingDir\daau-upgrade.ps1`""
-        exit
+        Start-Process powershell -ArgumentList "-NoProfile -ExecutionPolicy Bypass -Command `"$WorkingDir\daau-upgrade`""
+        Exit
     }
-    catch{
+    Catch{
         #Send Error Notif
-        $Title = $NotifLocale.local.outputs.output[4].title -f "Doherty App Updater"
+        $Title = $NotifLocale.local.outputs.output[4].title -f "DA App Updater"
         $Message = $NotifLocale.local.outputs.output[4].message
         $MessageType = "error"
-        $Balise = "Doherty App Updater"
+        $Balise = "DA App Updater"
         Start-NotifTask $Title $Message $MessageType $Balise
-        Write-Log "DAAU Update failed"
+        Write-Log "DAAU Update failed" "Red"
     }
 }
