@@ -6,51 +6,31 @@ function Get-WingetOutdatedApps {
         [string]$AvailableVersion
     }
 
-    #Get WinGet Location
-    $WingetCmd = Get-Command winget.exe -ErrorAction SilentlyContinue
-    if ($WingetCmd){
-        $script:upgradecmd = $WingetCmd.Source
-    }
-    elseif (Test-Path "C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_*_x64__8wekyb3d8bbwe\AppInstallerCLI.exe"){
-        #WinGet < 1.17
-        $script:upgradecmd = Resolve-Path "C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_*_x64__8wekyb3d8bbwe\AppInstallerCLI.exe" | Select-Object -ExpandProperty Path
-    }
-    elseif (Test-Path "C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_*_x64__8wekyb3d8bbwe\winget.exe"){
-        #WinGet > 1.17
-        $script:upgradecmd = Resolve-Path "C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller_*_x64__8wekyb3d8bbwe\winget.exe" | Select-Object -ExpandProperty Path
-    }
-    else{
-        Write-Log "Winget not installed !"
-        return
-    }
-
-    #Run winget to list apps and accept source agrements (necessary on first run)
-    & $upgradecmd list --accept-source-agreements | Out-Null
-
     #Get list of available upgrades on winget format
-    $upgradeResult = & $upgradecmd upgrade | Out-String
+    Write-Log "Checking application updates on Winget Repository..." "yellow"
+    $upgradeResult = & $Winget upgrade | Out-String
 
     #Start Convertion of winget format to an array. Check if "-----" exists
-    if (!($upgradeResult -match "-----")){
-        return
+    If (!($upgradeResult -match "-----")){
+        Return
     }
 
     #Split winget output to lines
-    $lines = $upgradeResult.Split([Environment]::NewLine).Replace("¦ ","")
+    $lines = $upgradeResult.Split([Environment]::NewLine) | Where-Object {$_}
 
     # Find the line that starts with "------"
     $fl = 0
-    while (-not $lines[$fl].StartsWith("-----")){
+    While (-not $lines[$fl].StartsWith("-----")){
         $fl++
     }
     
-    #Get header line
-    $fl = $fl - 2
+    #Get header line 
+    $fl = $fl - 1
 
     #Get header titles
     $index = $lines[$fl] -split '\s+'
 
-    # Line $i has the header, we can find char where we find ID and Version
+    # Line $fl has the header, we can find char where we find ID and Version
     $idStart = $lines[$fl].IndexOf($index[1])
     $versionStart = $lines[$fl].IndexOf($index[2])
     $availableStart = $lines[$fl].IndexOf($index[3])
@@ -60,7 +40,7 @@ function Get-WingetOutdatedApps {
     $upgradeList = @()
     For ($i = $fl + 2; $i -le $lines.Length; $i++){
         $line = $lines[$i]
-        if ($line.Length -gt ($sourceStart+5) -and -not $line.StartsWith('-')){
+        If ($line.Length -gt ($sourceStart+5) -and -not $line.Contains("--include-unknown")){
             $software = [Software]::new()
             $software.Name = $line.Substring(0, $idStart).TrimEnd()
             $software.Id = $line.Substring($idStart, $versionStart - $idStart).TrimEnd()
@@ -71,5 +51,5 @@ function Get-WingetOutdatedApps {
         }
     }
 
-    return $upgradeList
+    Return $upgradeList
 }

@@ -1,5 +1,5 @@
 ﻿function Uninstall-DAAppUpdater{
-    Try{
+    Try {
         $DAAUPath = "$env:ProgramData\DA-AppUpdater"
         
         Write-Host "Removing Scheduled Tasks"
@@ -18,13 +18,13 @@
         Remove-PSDrive -Name "HKU" -Force -ErrorAction Continue
         
         Write-Host "Deleting Install Directory"
-		Remove-Item -Path "$env:ProgramData\DA-AppUpdater" -Force -Recurse
+		Remove-Item -Path "$DAAUPath" -Force -Recurse
         
-        Write-host "`nUninstallation succeeded!" -ForegroundColor Green
+        Write-Host "`nUninstallation succeeded!" -ForegroundColor Green
         Start-Sleep 1
     }
-    Catch{
-        Write-host "`nUninstallation failed!" -ForegroundColor Red
+    Catch {
+        Write-Host "`nUninstallation failed!" -ForegroundColor Red
         Start-Sleep 1
         Return $False
     }

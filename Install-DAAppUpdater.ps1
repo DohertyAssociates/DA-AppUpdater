@@ -22,8 +22,14 @@ Disable DA-AppUpdater update checking. By default, DAAU will auto update if new 
 .PARAMETER DisableDAAUPreRelease
 Disable DA-AppUpdater update checking for releases marked as "pre-release". By default, DAAU will auto update to stable releases.
 
+.PARAMETER UseWhiteList
+Use White List instead of Black List. This setting will not create the "exclude_apps.txt" but instead "include_apps.txt"
+
 .EXAMPLE
 .\Install-DAAppUpdater.ps1 -Silent -DoNotUpdate
+
+.EXAMPLE
+.\winget-install-and-update.ps1 -Silent -UseWhiteList -DoNotUpdate
 #>
 
 [CmdletBinding()]
@@ -32,175 +38,136 @@ param(
     [Parameter(Mandatory=$False)] [Alias('Path')] [String] $DAAUPath = "$env:ProgramData\DA-AppUpdater",
     [Parameter(Mandatory=$False)] [Switch] $DoNotUpdate = $false,
     [Parameter(Mandatory=$False)] [Switch] $DisableDAAUAutoUpdate = $false,
-    [Parameter(Mandatory=$False)] [Switch] $DisableDAAUPreRelease = $false
+    [Parameter(Mandatory=$False)] [Switch] $DisableDAAUPreRelease = $false,
+    [Parameter(Mandatory=$False)] [Switch] $UseWhiteList = $false
 )
 
 <# FUNCTIONS #>
-function Start-DALogging{
-$TimeStamp = (Get-Date -f yyyy-MM-dd_HH-mm)
-$DALogsFolder = "$env:systemdrive\ProgramData\Doherty Associates\Logs\"
-$LogFile = "DAAppUpdater-$env:COMPUTERNAME-$TimeStamp.log"
-
-# Create Tech Directory
-if (!(test-path "$env:systemdrive\Tech")) {
-    Write-Host "Creating Tech Directory"
-    New-Item -itemtype "directory" -path "$env:systemdrive\Tech" | out-null
-}
-else {
-    write-host "Tech Directory Already exists"
-}
-
-# Create Temp Directory
-if (!(test-path "$env:systemdrive\Temp")) {
-    Write-Host "Creating Temp Directory"
-    New-Item -itemtype "directory" -path "$env:systemdrive\Temp" | out-null
-}
-else {
-    write-host "Temp Directory Already exists"
-}
-
-# Create ProgramData\Doherty Associates Directory
-if (!(test-path "$env:systemdrive\programdata\Doherty Associates")) {
-    Write-Host "Creating ProgramData\Doherty Associates Directory"
-    New-Item -itemtype "directory" -path "$env:systemdrive\ProgramData\Doherty Associates\" | out-null
-}
-else {
-    write-host "ProgramData\Doherty Associates Already exists"
-}
-
-# Create ProgramData\Doherty Associates\Logs Directory
-if (!(test-path $dalogsfolder)) {
-    Write-Host "Creating ProgramData\Doherty Associates\Logs Directory"
-    New-Item -itemtype "directory" -path "$env:systemdrive\ProgramData\Doherty Associates\Logs\" | out-null
-}
-else {
-    write-host "ProgramData\Doherty Associates\Logs Already exists"
-}
-
-# Set transcript logging path
-Start-Transcript -path $DALogsFolder\$LogFile -append
-Write-Host "Current script timestamp: $(Get-Date)"
-}
-
-function Confirm-PrereqVC{
-    #Check if Visual C++ 2019 installed
-    $app = "Microsoft Visual C++*2019*"
-    $path = Get-Item HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*, HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall\* | Where-Object { $_.GetValue("DisplayName") -like $app}
+function Start-DALogging {
+    $DALogsFolder = "$env:systemdrive\ProgramData\Doherty Associates\Logs\"
+    $LogFile = "DAAppUpdater-$env:COMPUTERNAME.log"
     
-    #If not installed, ask for installation
-    if (!($path)){
-        #If -silent option, force installation
-        if ($Silent){
-            $InstallApp = "y"
+    # Create DA Directories
+    Write-Host "Creating Tech Directory"
+    New-Item -ItemType "Directory" -Path "$env:systemdrive\Tech" -Force -ErrorAction SilentlyContinue
+    Write-Host "Creating Temp Directory"
+    New-Item -ItemType "Directory" -Path "$env:systemdrive\Temp" -Force -ErrorAction SilentlyContinue
+    # Create ProgramData\Doherty Associates Subfolders
+    Write-Host "Creating ProgramData\Doherty Associates Directory and Sub-Folders"
+    New-Item -ItemType "Directory" -Path "$env:systemdrive\ProgramData\Doherty Associates\" -Force -ErrorAction SilentlyContinue
+    New-Item -ItemType "Directory" -Path "$env:systemdrive\ProgramData\Doherty Associates\Logs\" -Force -ErrorAction SilentlyContinue
+    New-Item -ItemType "Directory" -Path "$env:systemdrive\ProgramData\Doherty Associates\Scripts\" -Force -ErrorAction SilentlyContinue
+    New-Item -ItemType "Directory" -Path "$env:systemdrive\ProgramData\Doherty Associates\Installers\" -Force -ErrorAction SilentlyContinue
+    
+    # Set transcript logging path
+    Start-Transcript -path $DALogsFolder\$LogFile -Append
+    Write-Host "Current script timestamp: $(Get-Date -f yyyy-MM-dd_HH-mm)"
+}
+
+function Confirm-VCPlusPlusPrereq {
+    #Check if Visual C++ 2019 or 2022 installed
+    Write-Host "Checking if Winget is installed" -ForegroundColor Yellow
+    $Visual2019 = "Microsoft Visual C++ 2015-2019 Redistributable*"
+    $Visual2022 = "Microsoft Visual C++ 2015-2022 Redistributable*"
+    $VCPath = Get-Item HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*, HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall\* | Where-Object {$_.GetValue("DisplayName") -like $Visual2019 -or $_.GetValue("DisplayName") -like $Visual2022}
+    
+    If (!($VCPath) -and $Silent.IsPresent) {
+        Try{
+            Write-Host "Downloading Visual C++ Redistributbles..."
+            $VCx86URL = "https://aka.ms/vs/17/release/VC_redist.x86.exe"
+            $VCx64URL = "https://aka.ms/vs/17/release/VC_redist.x64.exe"
+            $WebClient=New-Object System.Net.WebClient
+            $WebClient.DownloadFile($VCx86URL, "$PSScriptRoot\VC_redist.x86.exe")
+            $WebClient.DownloadFile($VCx64URL, "$PSScriptRoot\VC_redist.x64.exe")
+            Write-Host "Installing VC_redist.x86.exe..."
+            Start-Process -FilePath "$PSScriptRoot\VC_redist.x86.exe" -Args "/quiet /norestart" -Wait
+            Write-Host "Installing VC_redist.x64.exe..."
+            Start-Process -FilePath "$PSScriptRoot\VC_redist.x64.exe" -Args "/quiet /norestart" -Wait
+            Remove-Item $VCx86Installer -ErrorAction Ignore
+            Remove-Item $VCx64Installer -ErrorAction Ignore
+            Write-Host "MS Visual C++ 2015-2022 installed successfully" -ForegroundColor Green
         }
-        else{
-            #Ask for installation
-            while("y","n" -notcontains $InstallApp){
-	            $InstallApp = Read-Host "[Prerequisite for Winget] Microsoft Visual C++ 2019 is not installed. Would you like to install it? [Y/N]"
-            }
-        }
-        if ($InstallApp -eq "y"){
-            try{
-                if((Get-CimInStance Win32_OperatingSystem).OSArchitecture -like "*64*"){
-                    $OSArch = "x64"
-                }
-                else{
-                    $OSArch = "x86"
-                }
-                Write-host "Downloading VC_redist.$OSArch.exe..."
-                $SourceURL = "https://aka.ms/vs/16/release/VC_redist.$OSArch.exe"
-                $Installer = $WingetUpdatePath + "\VC_redist.$OSArch.exe"
-                $ProgressPreference = 'SilentlyContinue'
-                Invoke-WebRequest $SourceURL -OutFile (New-Item -Path $Installer -Force)
-                Write-host "Installing VC_redist.$OSArch.exe..."
-                Start-Process -FilePath $Installer -Args "/quiet /norestart" -Wait
-                Remove-Item $Installer -ErrorAction Ignore
-                Write-host "MS Visual C++ 2015-2019 installed successfully" -ForegroundColor Green
-            }
-            catch{
-                Write-host "MS Visual C++ 2015-2019 installation failed." -ForegroundColor Red
-                Start-Sleep 3
-            }
+        Catch {
+            Write-Host "MS Visual C++ 2015-2022 installation failed" -ForegroundColor Red
+            Start-Sleep 3
         }
     }
-    else{
-        Write-Host "Prerequisites checked. OK" -ForegroundColor Green
+    Else {
+    Write-Host "MS Visual C++ 2015-2022 already installed" -ForegroundColor Green
     }
 }
 
-function Confirm-PrereqWinGet{
-    $WindowsAppsPath = $env:SystemDrive + "\Program Files\WindowsApps"
-    $AppInstallerFolders = (Get-ChildItem -Path $WindowsAppsPath | Where-Object { $_.Name -like "Microsoft.DesktopAppInstaller_*_x64__8wekyb3d8bbwe" } | Select-Object Name)
-    $AppInstallerFound = $False
-    If ($AppInstallerFolders) {
-        ForEach ($FolderName in $AppInstallerFolders) {
-        $AppFilePath = (Join-Path -path $WindowsAppsPath -ChildPath $FolderName.Name | Join-Path -ChildPath "AppInstallerCLI.exe")
-            If (Test-Path -Path $AppFilePath) {
-                $AppInstallerFound = $True
-                }
-            Else{
-                $AppFilePath = (Join-Path -path $WindowsAppsPath -ChildPath $FolderName.Name | Join-Path -ChildPath "winget.exe")
-                    If (Test-Path -Path $AppFilePath) {
-                        $AppInstallerFound = $True
-                }
-            }
-        }
+function Confirm-WinGetPrereq {
+    Write-Host "Checking if Winget is installed" -ForegroundColor Yellow
+    $TestWinGet = Get-AppxProvisionedPackage -Online | Where-Object {$_.DisplayName -eq "Microsoft.DesktopAppInstaller"}
+    
+    If([Version]$TestWinGet.Version -gt "2022.213.0.0") {
+        Write-Host "WinGet is Installed" -ForegroundColor Green
+        Return $Script:WingetExists
     }
-    If ($AppInstallerFound) {
-        Write-Verbose "App Installer is already present"
-        $Script:WingetInstall = Get-AppxProvisionedPackage -Online | Where-Object {$_.DisplayName -eq “Microsoft.DesktopAppInstaller”}
-        Return $True 
-    }
-    Else{
-        Write-Verbose "App Installer not Installed"
-        Return $False
+    Else {
+        Write-Verbose "WinGet not Installed. Running installer"
+        Install-WinGet
     }
 }
 
-function Install-WinGet{
+function Install-WinGet {
         #Download WinGet MSIXBundle
-        Write-Host "Downloading WinGet..."
+        Write-Host "Downloading latest WinGet version..."
         $WinGetURL = "https://aka.ms/getwinget"
         $WebClient=New-Object System.Net.WebClient
-        $WebClient.DownloadFile($WinGetURL, "$PSScriptRoot\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle")
+        $WebClient.DownloadFile($WinGetURL, ".\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle")
     
         #Install WinGet MSIXBundle
-        Write-host "Installing MSIXBundle for App Installer..."
-        Add-AppxProvisionedPackage -Online -PackagePath "$PSScriptRoot\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle" -SkipLicense
+        Write-Host "Installing MSIXBundle for App Installer..."
+        Add-AppxProvisionedPackage -Online -PackagePath ".\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle" -SkipLicense
     
         #Check Package Install
         Write-Host "Checking Package Install"
         $TestWinGet = Get-AppxProvisionedPackage -Online | Where-Object {$_.DisplayName -eq “Microsoft.DesktopAppInstaller”}
-            If($TestWinGet.DisplayName) {
-                Write-Host "WinGet Installed"
-                Remove-Item -Path "$PSScriptRoot\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle" -Force -ErrorAction Continue
-                Return $True
+            If ($TestWinGet.DisplayName) {
+                Write-Host "WinGet Installed" -ForegroundColor Green
+                Remove-Item -Path ".\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle" -Force -ErrorAction Continue
+                Return $Script:WingetExists
             }
             Else {
                 Write-Host "WinGet Not Installed"
-                Return $False
+                Exit 1618 #Retry
             }
 }
 
-function Invoke-MSStoreUpdate{
+function Invoke-MSStoreUpdate {
     Write-Host "Attempting to force a Microsoft Store Update"
     Get-CimInstance -Namespace "Root\cimv2\mdm\dmmap" -ClassName "MDM_EnterpriseModernAppManagement_AppManagement01" | Invoke-CimMethod -MethodName UpdateScanMethod
 }
 
-function Install-DAAppUpdater{
-    try{
+function Install-DAAppUpdater {
+    Try{
         #Copy files to install location
-        if (!(Test-Path $DAAUPath)){
+        If (!(Test-Path $DAAUPath)) {
             New-Item -ItemType Directory -Force -Path $DAAUPath
         }
         Copy-Item -Path "$PSScriptRoot\DA-AppUpdater\*" -Destination $DAAUPath -Recurse -Force -ErrorAction SilentlyContinue
+
+        #Set apps whitelist or blacklist
+        If ($UseWhiteList) {
+            If (Test-Path "$PSScriptRoot\included_apps.txt"){
+                Copy-Item -Path "$PSScriptRoot\included_apps.txt" -Destination $DAAUPath -Recurse -Force -ErrorAction SilentlyContinue
+            }
+            Else{
+                New-Item -Path $DAAUPath -Name "included_apps.txt" -ItemType "file" -ErrorAction SilentlyContinue
+            }
+        }
+        Else {
+            Copy-Item -Path "$PSScriptRoot\excluded_apps.txt" -Destination $DAAUPath -Recurse -Force -ErrorAction SilentlyContinue
+        }
 
         # Set regkeys for notification name and icon
         & reg add "HKCR\AppUserModelId\Windows.SystemToast.DAAU.Notification" /v DisplayName /t REG_EXPAND_SZ /d "Doherty App Updater" /f | Out-Null
         & reg add "HKCR\AppUserModelId\Windows.SystemToast.DAAU.Notification" /v IconUri /t REG_EXPAND_SZ /d $DAAUPath\icons\DAToastIcon.png /f | Out-Null
 
         # Settings for the scheduled task for Updates
-        $taskAction = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-ExecutionPolicy Bypass -File `"$($DAAUPath)\daau-upgrade.ps1`""
+        $taskAction = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-ExecutionPolicy Bypass -File `"$($DAAUPath)\winget-upgrade.ps1`""
         $taskTrigger1 = New-ScheduledTaskTrigger -AtLogOn
         $taskTrigger2 = New-ScheduledTaskTrigger  -Daily -At 6AM
         $taskUserPrincipal = New-ScheduledTaskPrincipal -UserId S-1-5-18 -RunLevel Highest
@@ -208,16 +175,16 @@ function Install-DAAppUpdater{
 
         # Set up the task, and register it
         $task = New-ScheduledTask -Action $taskAction -Principal $taskUserPrincipal -Settings $taskSettings -Trigger $taskTrigger2,$taskTrigger1
-        Register-ScheduledTask -TaskName 'DA-AppUpdater' -InputObject $task -Force
+        Register-ScheduledTask -TaskName 'DA-AppUpdater'-InputObject $task -Force | Out-Null
 
         # Settings for the scheduled task for Notifications
-        $taskAction = New-ScheduledTaskAction -Execute "wscript.exe" -Argument "`"$($DAAUPath)\Invisible.vbs`" `"powershell.exe -ExecutionPolicy Bypass -File `"`"`"$($DAAUPath)\daau-notify.ps1`"`""
+        $taskAction = New-ScheduledTaskAction -Execute "wscript.exe" -Argument "`"$($DAAUPath)\Invisible.vbs`" `"powershell.exe -ExecutionPolicy Bypass -File `"`"`"$($DAAUPath)\winget-notify.ps1`"`""
         $taskUserPrincipal = New-ScheduledTaskPrincipal -GroupId S-1-5-11
         $taskSettings = New-ScheduledTaskSettingsSet -Compatibility Win8 -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit 00:05:00
 
         # Set up the task, and register it
         $task = New-ScheduledTask -Action $taskAction -Principal $taskUserPrincipal -Settings $taskSettings
-        Register-ScheduledTask -TaskName 'DA-AppUpdater-Notify' -InputObject $task -Force
+        Register-ScheduledTask -TaskName 'DA-AppUpdater-Notify'-InputObject $task -Force | Out-Null
 
         # Install config file
         [xml]$ConfigXML = @"
@@ -225,6 +192,7 @@ function Install-DAAppUpdater{
 <app>
     <DAAUAutoUpdate>$(!($DisableDAAUAutoUpdate))</DAAUAutoUpdate>
     <DAAUPreRelease>$(!($DisableDAAUPreRelease))</DAAUPreRelease>
+    <UseDAAUWhiteList>$UseWhiteList</UseDAAUWhiteList>
 </app>
 "@
         $ConfigXML.Save("$DAAUPath\config\config.xml")
@@ -235,10 +203,10 @@ function Install-DAAppUpdater{
         #Run Winget Immediately
         Start-DAAppUpdater
     }
-    catch{
+    Catch{
         Write-host "`nInstallation failed! Run me with admin rights" -ForegroundColor Red
         Start-sleep 1
-        return $False
+        Return $False
     }
 }
 
@@ -263,31 +231,41 @@ function Set-DAAUNotificationPriority{
     }
 }
 
-function Start-DAAppUpdater{
+function Start-DAAppUpdater {
     #If -DoNotUpdate is true, skip.
-    if (!($DoNotUpdate)){
-            #If -Silent, run DA-AppUpdater now
-            if ($Silent){
-                $RunWinget = "y"
+    If (!($DoNotUpdate)){
+        #If -Silent, run Winget-AutoUpdate now
+        If ($Silent){
+            $RunWinget = 1
+        }
+        #If running interactively, ask for WingetAutoUpdate
+        Else {
+            $MsgBoxTitle = "DA-AppUpdater"
+            $MsgBoxContent = "Would you like to run DA-AppUpdater now?"
+            $MsgBoxTimeOut = 60
+            $MsgBoxReturn = (New-Object -ComObject "Wscript.Shell").Popup($MsgBoxContent,$MsgBoxTimeOut,$MsgBoxTitle,4+32)
+            If ($MsgBoxReturn -ne 7) {
+                $RunWinget = 1
             }
-            #Ask for DA-AppUpdater
-            else{
-                while("y","n" -notcontains $RunWinget){
-	                $RunWinget = Read-Host "Start DA-AppUpdater now? [Y/N]"
-                }
-            }
-        if ($RunWinget -eq "y"){
-            try{
-                Write-host "Running DA-AppUpdater..." -ForegroundColor Yellow
-                Get-ScheduledTask -TaskName "DA-AppUpdater" -ErrorAction SilentlyContinue | Start-ScheduledTask -ErrorAction SilentlyContinue
-            }
-            catch{
-                Write-host "Failed to run DA-AppUpdater..." -ForegroundColor Red
+            Else {
+                $RunWinget = 0
             }
         }
+        If ($RunWinget -eq 1){
+        Try {
+            Write-host "Running DA-AppUpdater..." -ForegroundColor Yellow
+            Get-ScheduledTask -TaskName "DA-AppUpdater" -ErrorAction SilentlyContinue | Start-ScheduledTask -ErrorAction SilentlyContinue
+            While ((Get-ScheduledTask -TaskName "DA-AppUpdater").State -ne  'Ready') {
+                Start-Sleep 1
+            }
+        }
+        Catch {
+            Write-host "Failed to run DA-AppUpdater..." -ForegroundColor Red
+        }
     }
-    else{
-        Write-host "Skip running DA-AppUpdater"
+    }
+    Else {
+    Write-host "Skip running DA-AppUpdater"
     }
 }
 
@@ -295,11 +273,13 @@ function Start-DAAppUpdater{
 <# MAIN #>
 Start-DALogging
 
-Write-host "###################################"
-Write-host "#                                 #"
-Write-host "#          DA App Updater         #"
-Write-host "#                                 #"
-Write-host "###################################`n"
+Write-Host "`n"
+Write-Host "###################################"
+Write-Host "#                                 #"
+Write-Host "#          DA App Updater         #"
+Write-Host "#                                 #"
+Write-Host "###################################"
+Write-Host "`n"
 Write-host "Installing to $DAAUPath\"
 
 Try {
@@ -308,11 +288,11 @@ Try {
     Start-Sleep -Seconds 60
 
     #Check Pre-Reqs
-    Confirm-PrereqVC
-    $CheckWinGet = Confirm-PrereqWinGet
+    Confirm-VCPlusPlusPrereq
+    Confirm-WinGetPrereq
 
     #Start Install
-    If($CheckWinGet -eq $True) {
+    If ($Script:WingetExists -eq $True) {
         Write-Host "Winget Installed - Version $($WingetInstall.Version)"
         Write-Host "Installing DA App Updater"
         Install-DAAppUpdater
@@ -323,23 +303,10 @@ Try {
         Exit 0
     }
     Else {
-        $InstallWinGet = Install-WinGet
-            If($InstallWinGet -eq $True) {
-                Write-Host "Winget Installed - Version $($WingetInstall.Version)"
-                Write-Host "Installing DA App Updater"
-                Install-DAAppUpdater
-                Write-Host "Configuring Notification Priority"
-                Set-DAAUNotificationPriority
-                Write-Host "Install complete. Exiting with success code"
-                Start-Sleep 3
-                Exit 0  
-            }
-            Else {
-                Write-Error "Winget is not installed. Exiting with retry code"
-                Start-Sleep 3
-                Exit 1618 
-            }
-    }
+        Write-Error "Winget is not installed. Exiting with retry code"
+        Start-Sleep 3
+        Exit 1618 
+        }
 }
 Catch {
     Write-Error "$_.Exception.Message"
