@@ -1,0 +1,4 @@
+7zip.7zip
+Notepad++.Notepad++
+Adobe.Acrobat.Reader.64-bit
+Google.Chrome
