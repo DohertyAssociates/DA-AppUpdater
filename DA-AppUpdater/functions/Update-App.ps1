@@ -32,7 +32,7 @@ function Update-App ($app) {
     Write-Log "##########   WINGET UPGRADE PROCESS FINISHED FOR APPLICATION ID '$($App.Id)'   ##########" "Gray"   
 
     #Notify installation
-    If ($FailedToUpgrade -eq $false){   
+    If ($FailedToUpgrade -eq $false) {   
         #Send success updated app notification
         Write-Log "$($app.Name) updated to $($app.AvailableVersion) !" "Green"
         
@@ -43,7 +43,7 @@ function Update-App ($app) {
         $Balise = $($app.Name)
         Start-NotifTask $Title $Message $MessageType $Balise
 
-        $InstallOK += 1
+        $Script:InstallOK += 1
     }
     Else {
         #Send failed updated app notification

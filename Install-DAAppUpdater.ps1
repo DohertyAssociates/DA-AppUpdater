@@ -25,6 +25,9 @@ Disable DA-AppUpdater update checking for releases marked as "pre-release". By d
 .PARAMETER UseWhiteList
 Use White List instead of Black List. This setting will not create the "exclude_apps.txt" but instead "include_apps.txt"
 
+.PARAMETER NotificationLevel
+Specify the Notification level: Full (Default, displays all notification), SuccessOnly (Only displays notification for success) or None (Does not show any popup).
+
 .EXAMPLE
 .\Install-DAAppUpdater.ps1 -Silent -DoNotUpdate
 
@@ -39,7 +42,8 @@ param(
     [Parameter(Mandatory=$False)] [Switch] $DoNotUpdate = $false,
     [Parameter(Mandatory=$False)] [Switch] $DisableDAAUAutoUpdate = $false,
     [Parameter(Mandatory=$False)] [Switch] $DisableDAAUPreRelease = $false,
-    [Parameter(Mandatory=$False)] [Switch] $UseWhiteList = $false
+    [Parameter(Mandatory=$False)] [Switch] $UseWhiteList = $false,
+    [Parameter(Mandatory=$False)] [ValidateSet("Full","SuccessOnly","None")] [String] $NotificationLevel = "Full"
 )
 
 <# FUNCTIONS #>
@@ -193,6 +197,7 @@ function Install-DAAppUpdater {
     <DAAUAutoUpdate>$(!($DisableDAAUAutoUpdate))</DAAUAutoUpdate>
     <DAAUPreRelease>$(!($DisableDAAUPreRelease))</DAAUPreRelease>
     <UseDAAUWhiteList>$UseWhiteList</UseDAAUWhiteList>
+    <NotificationLevel>$NotificationLevel</NotificationLevel>
 </app>
 "@
         $ConfigXML.Save("$DAAUPath\config\config.xml")
@@ -217,6 +222,7 @@ function Set-DAAUNotificationPriority{
         reg load HKU\Default C:\Users\Default\NTUSER.DAT
         Write-Host "Creating default user notification registry keys"
         New-Item -Path "HKU:\Default\SOFTWARE\Microsoft\Windows\CurrentVersion\Notifications\Settings\Windows.SystemToast.DAAU.Notification"
+        New-ItemProperty "HKU:\Default\SOFTWARE\Microsoft\Windows\CurrentVersion\Notifications\Settings\Windows.SystemToast.DAAU.Notification" -Name "Rank" -Value "99" -PropertyType Dword -Force
         reg unload HKU\Default
     }
     Else {
@@ -224,9 +230,9 @@ function Set-DAAUNotificationPriority{
         $strSID = $objUser.Translate([System.Security.Principal.SecurityIdentifier])
         Write-Host "Standard deployment detected. Adding registry keys to logged-in user hive."
         New-PSDrive -Name "HKU" -PSProvider "Registry" -Root "HKEY_USERS"
-        Set-Location -Path "HKU:\$($strSID.Value)\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings"
-        New-Item -Path "HKU:\$($strSID.Value)\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings" -Name "Windows.SystemToast.DAAU.Notification" -Force
-        New-ItemProperty "HKU:\$($strSID.Value)\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings\Windows.SystemToast.DAAU.Notification" -Name "Rank" -Value "99" -PropertyType Dword -Force
+        Set-Location -Path "HKU:\$($strSID.Value)\SOFTWARE\Microsoft\Windows\CurrentVersion\Notifications\Settings"
+        New-Item -Path "HKU:\$($strSID.Value)\SOFTWARE\Microsoft\Windows\CurrentVersion\Notifications\Settings" -Name "Windows.SystemToast.DAAU.Notification" -Force
+        New-ItemProperty "HKU:\$($strSID.Value)\SOFTWARE\Microsoft\Windows\CurrentVersion\Notifications\Settings\Windows.SystemToast.DAAU.Notification" -Name "Rank" -Value "99" -PropertyType Dword -Force
         Remove-PSDrive -Name "HKU" -Force -ErrorAction Continue
     }
 }
