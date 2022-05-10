@@ -1,5 +1,3 @@
-#Function to send notifications to user
-
 function Start-NotifTask ($Title,$Message,$MessageType,$Balise) {
 
     If (($NotificationLevel -eq "Full") -or ($NotificationLevel -eq "SuccessOnly" -and $MessageType -eq "Success")) {
@@ -22,7 +20,7 @@ function Start-NotifTask ($Title,$Message,$MessageType,$Balise) {
         $currentPrincipal = [bool](([System.Security.Principal.WindowsIdentity]::GetCurrent()).groups -match "S-1-5-4")
         
         #if not "Interactive" user, run as system
-        If ($currentPrincipal -eq $false) {
+        If ($currentPrincipal -eq $false){
 
             #Save XML to File
             $ToastTemplateLocation = "$env:ProgramData\DA-AppUpdater\"
@@ -33,9 +31,10 @@ function Start-NotifTask ($Title,$Message,$MessageType,$Balise) {
 
             #Run Notify scheduled task to notify conneted users
             Get-ScheduledTask -TaskName "DA-AppUpdater-Notify" -ErrorAction SilentlyContinue | Start-ScheduledTask -ErrorAction SilentlyContinue
+        
         }
         #else, run as connected user
-        Else{
+        Else {
 
             #Load Assemblies
             [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
@@ -52,7 +51,6 @@ function Start-NotifTask ($Title,$Message,$MessageType,$Balise) {
             $ToastMessage = [Windows.UI.Notifications.ToastNotification]::New($ToastXml)
             $ToastMessage.Tag = $ToastTemplate.toast.tag
             [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier($LauncherID).Show($ToastMessage)
-
         }
 
         #Wait for notification to display

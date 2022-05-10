@@ -11,11 +11,15 @@ The -S install switch will install the app and pre-requisites silently.
 By default, scripts and components will be placed in %ProgramData%\DA-AppUpdater. You can change this with the -Path argument.
 ## Disable post-install update
 By default, the app will run through configured applications after the app itself is installed. The -DoNotUpdate switch will disable this functionality.
+## Update at user log-on
+Option to make DAAU to check for app updates when a user logs into a device. Default is False, can be enabled with the "-UpdatesAtLogon" switch.
+## Update interval
+The default update cycle is "Daily". This can be changed to "Weekly", "BiWeekly" or "Monthly" by using the -UpdatesInterval switch. e.g. -UpdatesInterval Weekly
 ## Update DAAU
 An auto-update feature will automatically update the app itself if an update is available on Github. By default, DAAU AutoUpdate is enabled. To disable DAAU AutoUpdate, the install script will need to be run with the "-DisableDAAUAutoUpdate" switch.
 ## Pre-Release Updates
 If -DisableDAAUPreRelease is set to "True", then any automatic updates set as pre-release versions on GitHub will be installed. This is set to disabled by default.
-### Include/Exclude Behaviorr
+### Include/Exclude Behavior
 #### Exclude
 By default, the tool will ignore certain installed applications. Winget App ID's needing to be excluding from the autoupdate will need to be added to 'excluded_apps.txt'.
 Default Exclusions are set for:
@@ -37,10 +41,9 @@ Alternatively, the application can only update apps as defined in the 'included_
 The default notification is set to "Full". This will display all notifications to users, including if the tool has updated, or an app update has succeeded or failed. This can be set to "SuccessOnly" which will only show successful updates (failures could generate tickets), or "None", which will silently update applications.
 ## App Information
 ### When does the script run?
-The created scheduled task is set to run:
-- At user logon
-- At 6AM every day (with the -StartWhenAvailable flag on the scheduled task to be sure it is run at least once a day)
-This way, even without connected user, powered-on computers get applications updated anyway.
+By default The created scheduled task is set to run:
+- At 6AM every day (with the -StartWhenAvailable flag on the scheduled task to be sure it is run at least once a day). This way, even without connected user, powered-on computers get applications updated anyway.
+See the above UpdatesAtLogon and UpdatesInterval switches to amend how often the script runs.
 ### Log location
 You can find logs in %ProgramData%\DA-AppUpdater\logs.
 Logs for the DA-AppUpdater install itself can be found in DA Log folder.

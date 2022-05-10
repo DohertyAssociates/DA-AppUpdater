@@ -10,29 +10,47 @@ function Update-App ($app) {
 
     #Winget upgrade
     Write-Log "##########   WINGET UPGRADE PROCESS STARTS FOR APPLICATION ID '$($App.Id)'   ##########" "Gray"
-        #Run Winget Upgrade command
-        & $Winget upgrade --id $($app.Id) --all --accept-package-agreements --accept-source-agreements -h | Tee-Object -file $LogFile -Append
-        
-        #Check if application updated properly
-        $CheckOutdated = Get-WingetOutdatedApps
-        $FailedToUpgrade = $false
-        Foreach ($CheckApp in $CheckOutdated){
-            If ($($CheckApp.Id) -eq $($app.Id)) {
-                #If app failed to upgrade, run Install command
-                & $Winget install --id $($app.Id) --accept-package-agreements --accept-source-agreements -h | Tee-Object -file $LogFile -Append
-                #Check if application installed properly
-                $CheckOutdated2 = Get-WingetOutdatedApps
-                Foreach ($CheckApp2 in $CheckOutdated2){
-                    If ($($CheckApp2.Id) -eq $($app.Id)) {
-                        $FailedToUpgrade = $true
-                    }      
-                }
+    
+    #Run Winget Upgrade command
+    & $Winget upgrade --id $($app.Id) --all --accept-package-agreements --accept-source-agreements -h | Tee-Object -file $LogFile -Append
+    
+    #Check if mods exist
+    $ModsInstall, $ModsUpgrade = Test-Mods $($app.Id)
+    
+    If ($ModsUpgrade){
+        Write-Log "Modifications for $($app.Id) during upgrade are being applied..." "Yellow"
+        & "$ModsUpgrade"
+    }
+    
+    #Check if application updated properly
+    $CheckOutdated = Get-WingetOutdatedApps
+    $FailedToUpgrade = $false
+    ForEach ($CheckApp in $CheckOutdated){
+        If ($($CheckApp.Id) -eq $($app.Id)) {
+            
+            #If app failed to upgrade, run Install command
+            & $Winget install --id $($app.Id) --accept-package-agreements --accept-source-agreements -h | Tee-Object -file $LogFile -Append
+
+            If ($ModsInstall){
+                Write-Log "Modifications for $($app.Id) during install are being applied..." "Yellow"
+                & "$ModsInstall"
+            }
+            
+            #Check if application installed properly
+            $CheckOutdated2 = Get-WingetOutdatedApps
+            ForEach ($CheckApp2 in $CheckOutdated2){
+                If ($($CheckApp2.Id) -eq $($app.Id)) {
+                    $FailedToUpgrade = $true
+                }      
             }
         }
+    }
+
     Write-Log "##########   WINGET UPGRADE PROCESS FINISHED FOR APPLICATION ID '$($App.Id)'   ##########" "Gray"   
 
     #Notify installation
-    If ($FailedToUpgrade -eq $false) {   
+    If ($FailedToUpgrade -eq $false){   
+
         #Send success updated app notification
         Write-Log "$($app.Name) updated to $($app.AvailableVersion) !" "Green"
         
@@ -44,8 +62,10 @@ function Update-App ($app) {
         Start-NotifTask $Title $Message $MessageType $Balise
 
         $Script:InstallOK += 1
+        
     }
     Else {
+
         #Send failed updated app notification
         Write-Log "$($app.Name) update failed." "Red"
         
@@ -55,6 +75,7 @@ function Update-App ($app) {
         $MessageType = "error"
         $Balise = $($app.Name)
         Start-NotifTask $Title $Message $MessageType $Balise
+    
     }
+
 }
-Tee-Object
