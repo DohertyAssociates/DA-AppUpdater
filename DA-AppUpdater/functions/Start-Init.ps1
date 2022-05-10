@@ -1,6 +1,5 @@
-#Initialisation
-
 function Start-Init {
+
     #Config console output encoding
     [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
@@ -9,22 +8,32 @@ function Start-Init {
     $Log | Write-host
 
     #Logs initialisation if admin
-    try{
+    Try {
+
         $LogPath = "$WorkingDir\logs"
+        
         if (!(Test-Path $LogPath)){
             New-Item -ItemType Directory -Force -Path $LogPath
         }
+        
         #Log file
         $Script:LogFile = "$LogPath\updates.log"
-        $Log | out-file -filepath $LogFile -Append
+        $Log | Out-File -filepath $LogFile -Append
+    
     }
     #Logs initialisation if non-admin
-    catch{
+    Catch {
+    
         $LogPath = "$env:USERPROFILE\DA-AppUpdater\logs"
-        if (!(Test-Path $LogPath)){
+    
+        If (!(Test-Path $LogPath)){
             New-Item -ItemType Directory -Force -Path $LogPath
         }
+
+        #Log file
         $Script:LogFile = "$LogPath\updates.log"
-        $Log | out-file -filepath $LogFile -Append
+        $Log | Out-File -filepath $LogFile -Append
+    
     }
+
 }

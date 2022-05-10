@@ -14,7 +14,7 @@
         $objUser = New-Object System.Security.Principal.NTAccount($LoggedInUser)
         $strSID = $objUser.Translate([System.Security.Principal.SecurityIdentifier])
         New-PSDrive -Name "HKU" -PSProvider "Registry" -Root "HKEY_USERS"
-        Remove-Item -Path "HKU:\$strSID\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings" -Force -Recurse
+        Remove-Item -Path "HKU:\$strSID\Software\Microsoft\Windows\CurrentVersion\Notifications\Settings\Windows.SystemToast.DAAU.Notification" -Force -Recurse
         Remove-PSDrive -Name "HKU" -Force -ErrorAction Continue
         
         Write-Host "Deleting Install Directory"

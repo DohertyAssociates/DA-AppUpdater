@@ -1,6 +1,5 @@
-#Get locale file for Notification.
-
-Function Get-NotifLocale {    
+function Get-NotifLocale {
+    
     #Get OS locale
     $OSLocale = (Get-Culture).Parent
 
@@ -8,17 +7,18 @@ Function Get-NotifLocale {
     $TestOSLocalPath = "$WorkingDir\locale\$($OSLocale.Name).xml"   
     
     #Set OS Local if file exists
-    If(Test-Path $TestOSLocalPath){
+    If (Test-Path $TestOSLocalPath){
         $LocaleDisplayName = $OSLocale.DisplayName
         $LocaleFile = $TestOSLocalPath
     }
     #Set English if file doesn't exist
-    Else{
+    Else {
         $LocaleDisplayName = "English"
         $LocaleFile = "$WorkingDir\locale\en.xml"
     }
 
     #Get locale XML file content
-    Write-Log "Notification Langugage : $LocaleDisplayName" "Cyan"
+    Write-Log "Notification Level: $NotificationLevel. Notification Language: $LocaleDisplayName" "Cyan"
     [xml]$Script:NotifLocale = Get-Content $LocaleFile -Encoding UTF8 -ErrorAction SilentlyContinue
+
 }
