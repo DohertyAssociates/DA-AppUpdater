@@ -142,13 +142,14 @@ function Install-WinGet {
     #Check Package Install
     Write-Host "Checking if Winget is installed" -ForegroundColor Yellow
     $TestWinGet = Get-AppxProvisionedPackage -Online | Where-Object {$_.DisplayName -eq "Microsoft.DesktopAppInstaller"}
-    If ([Version]$TestWinGet.Version -gt "2022.127.2322.0") {
+    If ([Version]$TestWinGet.Version -gt "2022.506.16.0") {
         Write-Host "WinGet is Installed" -ForegroundColor Green
     }
     Else {
         #Download WinGet MSIXBundle
         Write-Host "Not installed. Downloading WinGet..."
-        $WinGetURL = "https://aka.ms/getwinget"
+        #$WinGetURL = "https://aka.ms/getwinget"
+        $WinGetURL = "https://github.com/microsoft/winget-cli/releases/download/v1.3.1251-preview/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle" #Current preview version to allow install of MSStoreApps without MSA Account
         $WebClient.DownloadFile($WinGetURL, "$DAInstallerFolder\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle")
 
         #Install WinGet MSIXBundle
