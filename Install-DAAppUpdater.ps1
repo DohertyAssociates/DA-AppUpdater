@@ -142,14 +142,14 @@ function Install-WinGet {
     #Check Package Install
     Write-Host "Checking if Winget is installed" -ForegroundColor Yellow
     $TestWinGet = Get-AppxProvisionedPackage -Online | Where-Object {$_.DisplayName -eq "Microsoft.DesktopAppInstaller"}
-    If ([Version]$TestWinGet.Version -gt "2022.506.16.0") {
+    If ([Version]$TestWinGet.Version -gt "2022.519.1908.0") {
         Write-Host "WinGet is Installed" -ForegroundColor Green
     }
     Else {
         #Download WinGet MSIXBundle
         Write-Host "Not installed. Downloading WinGet..."
         #$WinGetURL = "https://aka.ms/getwinget"
-        $WinGetURL = "https://github.com/microsoft/winget-cli/releases/download/v1.3.1251-preview/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle" #Current preview version to allow install of MSStoreApps without MSA Account
+        $WinGetURL = "https://github.com/microsoft/winget-cli/releases/download/v1.3.1391-preview/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle" #Current preview version to allow install of MSStoreApps without MSA Account
         $WebClient.DownloadFile($WinGetURL, "$DAInstallerFolder\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle")
 
         #Install WinGet MSIXBundle
@@ -226,26 +226,34 @@ function Install-DAAppUpdater {
         $task = New-ScheduledTask -Action $taskAction -Principal $taskUserPrincipal -Settings $taskSettings
         Register-ScheduledTask -TaskName 'DA-AppUpdater-Notify' -InputObject $task -Force | Out-Null
 
-        # Install config file
-        [xml]$ConfigXML = @"
-<?xml version="1.0"?>
-<app>
-    <DAAUAutoUpdate>$(!($DisableDAAUAutoUpdate))</DAAUAutoUpdate>
-    <DAAUPreRelease>False</DAAUPreRelease>
-    <UseDAAUWhiteList>$UseWhiteList</UseDAAUWhiteList>
-    <NotificationLevel>$NotificationLevel</NotificationLevel>
-</app>
-"@
-        $ConfigXML.Save("$DAAUPath\config\config.xml")
+        # Configure Reg Key
+        $regPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Winget-AutoUpdate"
+        New-Item $regPath -Force
+        New-ItemProperty $regPath -Name DisplayName -Value "DA App Updater (DAAU)" -Force
+        New-ItemProperty $regPath -Name DisplayIcon -Value "C:\ProgramData\DA-AppUpdater\icons\datray.ico" -Force
+        New-ItemProperty $regPath -Name DisplayVersion -Value 1.5.0 -Force
+        New-ItemProperty $regPath -Name InstallLocation -Value $WingetUpdatePath -Force
+        New-ItemProperty $regPath -Name UninstallString -Value "powershell.exe -noprofile -executionpolicy bypass -file `"$WingetUpdatePath\DAAU-Uninstall.ps1`"" -Force
+        New-ItemProperty $regPath -Name QuietUninstallString -Value "powershell.exe -noprofile -executionpolicy bypass -file `"$WingetUpdatePath\DAAU-Uninstall.ps1`"" -Force
+        New-ItemProperty $regPath -Name NoModify -Value 1 -Force
+        New-ItemProperty $regPath -Name NoRepair -Value 1 -Force
+        New-ItemProperty $regPath -Name VersionMajor -Value 1 -Force
+        New-ItemProperty $regPath -Name VersionMinor -Value 5 -Force
+        New-ItemProperty $regPath -Name Publisher -Value "Doherty Associates" -Force
+        New-ItemProperty $regPath -Name DAAU_UpdatePrerelease -Value 0 -PropertyType DWord -Force
+        New-ItemProperty $regPath -Name DAAU_NotificationLevel -Value $NotificationLevel -Force
+        New-ItemProperty $regPath -Name DAAU_PostUpdateActions -Value 0 -PropertyType DWord -Force
+        If ($DisableDAAUAutoUpdate) {New-ItemProperty $regPath -Name DAAU_DisableAutoUpdate -Value 1 -Force}
+        If ($UseWhiteList) {New-ItemProperty $regPath -Name DAAU_UseWhiteList -Value 1 -PropertyType DWord -Force}
 
-        Write-host "`n DAAU Installation succeeded!" -ForegroundColor Green
+        Write-Host "`n DAAU Installation succeeded!" -ForegroundColor Green
         Start-sleep 1
         
         #Run Winget ?
         Start-DAAppUpdater
     }
     Catch {
-        Write-host "`n DAAU Installation failed! Run me with admin rights" -ForegroundColor Red
+        Write-Host "`n DAAU Installation failed! Run me with admin rights" -ForegroundColor Red
         Start-sleep 1
         Return $False
     }

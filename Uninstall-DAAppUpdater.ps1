@@ -7,7 +7,8 @@
 		Get-ScheduledTask -TaskName "DA-AppUpdater-Notify" -ErrorAction SilentlyContinue | Unregister-ScheduledTask -Confirm:$False
         
         Write-Host "Removing Reg Keys"
-        reg delete "HKCR\AppUserModelId\Windows.SystemToast.DAAU.Notification" /f
+        & reg delete "HKCR\AppUserModelId\Windows.SystemToast.DAAU.Notification" /f | Out-Null
+        & reg delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\DA-AppUpdater" /f | Out-Null
 
         Write-Host "Determining current user & removing Toast"
         $LoggedInUser = Get-WMIObject -class Win32_ComputerSystem | Select-Object -ExpandProperty username

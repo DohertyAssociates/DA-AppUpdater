@@ -11,14 +11,19 @@ Get-ChildItem "$WorkingDir\functions" | ForEach-Object {. $_.FullName}
 #Run log initialisation function
 Start-Init
 
-#Run Scope Machine funtion if run as system
-If ([System.Security.Principal.WindowsIdentity]::GetCurrent().IsSystem) {
-    $SettingsPath = "$env:windir\system32\config\systemprofile\AppData\Local\Microsoft\WinGet\Settings\settings.json"
-    Add-ScopeMachine $SettingsPath
+#Get DAAU Configurations
+$Script:DAAUConfig = Get-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\DA-AppUpdater"
+
+#Run post update actions if necessary
+If (!($DAAUConfig.DAAU_PostUpdateActions -eq 0)) {
+    Invoke-PostUpdateActions
 }
 
-#Get DAAU Configurations
-Get-DAAUConfig
+#Run Scope Machine funtion if run as system
+If ([System.Security.Principal.WindowsIdentity]::GetCurrent().IsSystem) {
+    $SettingsPath = "$Env:windir\system32\config\systemprofile\AppData\Local\Microsoft\WinGet\Settings\settings.json"
+    Add-ScopeMachine $SettingsPath
+}
 
 #Get Notif Locale function
 Get-NotifLocale
@@ -26,15 +31,21 @@ Get-NotifLocale
 #Check network connectivity
 If (Test-Network) {
     $TestWinget = Get-WingetCmd
+    
     If ($TestWinget) {
         #Get Current Version
-        Get-DAAUCurrentVersion
-        #Check if DAAU update feature is enabled
-        Get-DAAUUpdateStatus
+        $DAAUCurrentVersion = $DAAUConfig.DisplayVersion
+        Write-Log "DAAU current version: $DAAUCurrentVersion"
+        #Check if DAAU update feature is enabled or not
+        $DAAUDisableAutoUpdate = $DAAUConfig.DAAU_DisableAutoUpdate
         #If yes then check DAAU update
-        If ($true -eq $DAAUautoupdate) {
+        If ($DAAUDisableAutoUpdate -eq 1) {
+            Write-Log "DAAU AutoUpdate is Disabled." "Grey"
+        }
+        Else{
+            Write-Log "DAAU AutoUpdate is Enabled." "Green"
             #Get Available Version
-            Get-DAAUAvailableVersion
+            $DAAUAvailableVersion = Get-DAAUAvailableVersion
             #Compare
             If ([version]$DAAUAvailableVersion -gt [version]$DAAUCurrentVersion){
                 #If new version is available, update it
@@ -47,11 +58,12 @@ If (Test-Network) {
         }
 
         #Get White or Black list
-        If ($UseWhiteList) {
+        If ($DAAUConfig.DAAU_UseWhiteList -eq 1) {
             Write-Log "DAAU uses White List config"
             $toUpdate = Get-IncludedApps
+            $UseWhiteList = $true
         }
-        Else {
+        Else{
             Write-Log "DAAU uses Black List config"
             $toSkip = Get-ExcludedApps
         }
@@ -60,10 +72,10 @@ If (Test-Network) {
         $outdated = Get-WingetOutdatedApps
 
         #Log list of app to update
-        ForEach ($app in $outdated) {
+        foreach ($app in $outdated) {
             #List available updates
-            $Log = "Available update : $($app.Name). Current version : $($app.Version). Available version : $($app.AvailableVersion)."
-            $Log | Write-host
+            $Log = "-> Available update : $($app.Name). Current version : $($app.Version). Available version : $($app.AvailableVersion)."
+            $Log | Write-Host
             $Log | Out-File -FilePath $LogFile -Append
         }
         
@@ -71,26 +83,26 @@ If (Test-Network) {
         $Script:InstallOK = 0
 
         #If White List
-        If ($UseWhiteList) {
+        If ($UseWhiteList){
             #For each app, notify and update
-            ForEach ($app in $outdated) {
+            ForEach ($app in $outdated){
                 If (($toUpdate -contains $app.Id) -and $($app.Version) -ne "Unknown"){
                     Update-App $app
                 }
                 #if current app version is unknown
-                ElseIf($($app.Version) -eq "Unknown") {
+                ElseIf($($app.Version) -eq "Unknown"){
                     Write-Log "$($app.Name) : Skipped upgrade because current version is 'Unknown'" "Gray"
                 }
                 #if app is in "excluded list"
-                Else {
+                Else{
                     Write-Log "$($app.Name) : Skipped upgrade because it is not in the included app list" "Gray"
                 }
             }
         }
-        #If Black List
-        Else {
+        #If Black List or default
+        Else{
             #For each app, notify and update
-            ForEach ($app in $outdated) {
+            ForEach ($app in $outdated){
                 If (-not ($toSkip -contains $app.Id) -and $($app.Version) -ne "Unknown"){
                     Update-App $app
                 }
@@ -105,10 +117,10 @@ If (Test-Network) {
             }
         }
         
-        If ($InstallOK -gt 0) {
+        If ($InstallOK -gt 0){
             Write-Log "$InstallOK apps updated ! No more update." "Green"
         }
-        If ($InstallOK -eq 0) {
+        If ($InstallOK -eq 0){
             Write-Log "No new update." "Green"
         }
     }

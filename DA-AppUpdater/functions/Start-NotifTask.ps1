@@ -23,11 +23,11 @@ function Start-NotifTask ($Title,$Message,$MessageType,$Balise) {
         If ($currentPrincipal -eq $false){
 
             #Save XML to File
-            $ToastTemplateLocation = "$env:ProgramData\DA-AppUpdater\"
+            $ToastTemplateLocation = "$env:ProgramData\DA-AppUpdater\config\"
             If (!(Test-Path $ToastTemplateLocation)){
                 New-Item -ItemType Directory -Force -Path $ToastTemplateLocation
             }
-            $ToastTemplate.Save("$ToastTemplateLocation\config\notif.xml")
+            $ToastTemplate.Save("$ToastTemplateLocation\notif.xml")
 
             #Run Notify scheduled task to notify conneted users
             Get-ScheduledTask -TaskName "DA-AppUpdater-Notify" -ErrorAction SilentlyContinue | Start-ScheduledTask -ErrorAction SilentlyContinue
