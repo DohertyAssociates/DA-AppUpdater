@@ -1,3 +1,5 @@
+#Function for getting locale of Notifications
+
 function Get-NotifLocale {
     
     #Get OS locale
@@ -18,7 +20,7 @@ function Get-NotifLocale {
     }
 
     #Get locale XML file content
-    Write-Log "Notification Level: $NotificationLevel. Notification Language: $LocaleDisplayName" "Cyan"
+    Write-Log "Notification Level: $($DAAUConfig.DAAU_NotificationLevel). Notification Language: $LocaleDisplayName" "Cyan"
     [xml]$Script:NotifLocale = Get-Content $LocaleFile -Encoding UTF8 -ErrorAction SilentlyContinue
 
 }
