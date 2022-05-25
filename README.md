@@ -2,22 +2,22 @@
 Customised from work originally created by [Romanitho](https://github.com/Romanitho/Winget-AutoUpdate)
 
 ## App Concept
-This tool utilises the new [WinGet](https://github.com/microsoft/winget-cli) functionality to automatically update applications that are installed on a device. It adds functionality to make it possible to automatically notify users of updates having been applied, and the updater itself will automatically update via GitHub when available. 
+This tool utilises the new [WinGet](https://github.com/microsoft/winget-cli) functionality to automatically update applications that are installed on a device. It adds functionality to make it possible to automatically notify users of updates having been applied, and the updater itself will automatically update via GitHub when available. Initial work on calling the winget cli from a system context documented here: [Usage with System Account - Github](https://github.com/microsoft/winget-cli/discussions/962#discussioncomment-1561274)
 ## Install Options
 All parameters can be seen in the "Install-DAAAppUpdater.ps1" file.
-## Silent Install
+### Silent Install
 The -S install switch will install the app and pre-requisites silently.
 ### Default install location
 By default, scripts and components will be placed in %ProgramData%\DA-AppUpdater. You can change this with the -Path argument.
-## Disable post-install update
+### Disable post-install update
 By default, the app will run through configured applications after the app itself is installed. The -DoNotUpdate switch will disable this functionality.
-## Update at user log-on
+### Update at user log-on
 Option to make DAAU to check for app updates when a user logs into a device. Default is False, can be enabled with the "-UpdatesAtLogon" switch.
-## Update interval
+### Update interval
 The default update cycle is "Daily". This can be changed to "Weekly", "BiWeekly" or "Monthly" by using the -UpdatesInterval switch. e.g. -UpdatesInterval Weekly
-## Update DAAU
+### Update DAAU
 An auto-update feature will automatically update the app itself if an update is available on Github. By default, DAAU AutoUpdate is enabled. To disable DAAU AutoUpdate, the install script will need to be run with the "-DisableDAAUAutoUpdate" switch.
-## Pre-Release Updates
+### Pre-Release Updates
 If -DisableDAAUPreRelease is set to "True", then any automatic updates set as pre-release versions on GitHub will be installed. This is set to disabled by default.
 ### Include/Exclude Behavior
 #### Exclude
@@ -37,6 +37,7 @@ Alternatively, the application can only update apps as defined in the 'included_
 * Notepad++.Notepad++
 * Adobe.Acrobat.Reader.64-bit
 * Google.Chrome
+Used in conjunction with the winget-install script and the -DAAUWhiteList switch, you could deploy specific apps and have only those apps updated via DAAU.
 ### End-User Notification Level
 The default notification is set to "Full". This will display all notifications to users, including if the tool has updated, or an app update has succeeded or failed. This can be set to "SuccessOnly" which will only show successful updates (failures could generate tickets), or "None", which will silently update applications.
 ## App Information

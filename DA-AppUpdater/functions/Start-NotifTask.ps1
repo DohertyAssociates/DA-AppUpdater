@@ -1,6 +1,8 @@
+#Function to send notifications to user
+
 function Start-NotifTask ($Title,$Message,$MessageType,$Balise) {
 
-    If (($NotificationLevel -eq "Full") -or ($NotificationLevel -eq "SuccessOnly" -and $MessageType -eq "Success")) {
+    If (($DAAUConfig.DAAU_NotificationLevel -eq "Full") -or ($DAAUConfig.DAAU_NotificationLevel -eq "SuccessOnly" -and $MessageType -eq "Success")) {
 
         #Add XML variables
         [xml]$ToastTemplate = @"
@@ -24,7 +26,7 @@ function Start-NotifTask ($Title,$Message,$MessageType,$Balise) {
 
             #Save XML to File
             $ToastTemplateLocation = "$env:ProgramData\DA-AppUpdater\config\"
-            If (!(Test-Path $ToastTemplateLocation)){
+            if (!(Test-Path $ToastTemplateLocation)){
                 New-Item -ItemType Directory -Force -Path $ToastTemplateLocation
             }
             $ToastTemplate.Save("$ToastTemplateLocation\notif.xml")
@@ -34,7 +36,7 @@ function Start-NotifTask ($Title,$Message,$MessageType,$Balise) {
         
         }
         #else, run as connected user
-        Else {
+        Else{
 
             #Load Assemblies
             [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
@@ -51,10 +53,12 @@ function Start-NotifTask ($Title,$Message,$MessageType,$Balise) {
             $ToastMessage = [Windows.UI.Notifications.ToastNotification]::New($ToastXml)
             $ToastMessage.Tag = $ToastTemplate.toast.tag
             [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier($LauncherID).Show($ToastMessage)
+
         }
 
         #Wait for notification to display
         Start-Sleep 3
 
     }
+
 }

@@ -227,7 +227,7 @@ function Install-DAAppUpdater {
         Register-ScheduledTask -TaskName 'DA-AppUpdater-Notify' -InputObject $task -Force | Out-Null
 
         # Configure Reg Key
-        $regPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Winget-AutoUpdate"
+        $regPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\DA-AppUpdater"
         New-Item $regPath -Force
         New-ItemProperty $regPath -Name DisplayName -Value "DA App Updater (DAAU)" -Force
         New-ItemProperty $regPath -Name DisplayIcon -Value "C:\ProgramData\DA-AppUpdater\icons\datray.ico" -Force
