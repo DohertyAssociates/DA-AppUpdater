@@ -12,3 +12,4 @@ Mozilla.Firefox.Beta
 Mozilla.Firefox.DeveloperEdition
 TeamViewer.TeamViewer
 TeamViewer.TeamViewer.Host
+VideoLAN.VLC
