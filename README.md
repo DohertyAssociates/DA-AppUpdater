@@ -37,6 +37,7 @@ Alternatively, the application can only update apps as defined in the 'included_
 * Notepad++.Notepad++
 * Adobe.Acrobat.Reader.64-bit
 * Google.Chrome
+Used in conjunction with the winget-install script and the -DAAUWhiteList switch, you could deploy specific apps and have only those apps updated via DAAU.
 ### End-User Notification Level
 The default notification is set to "Full". This will display all notifications to users, including if the tool has updated, or an app update has succeeded or failed. This can be set to "SuccessOnly" which will only show successful updates (failures could generate tickets), or "None", which will silently update applications.
 ## App Information

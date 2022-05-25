@@ -15,8 +15,8 @@ function Invoke-PostUpdateActions {
         New-ItemProperty $regPath -Name NoRepair -Value 1 -Force
         New-ItemProperty $regPath -Name Publisher -Value "Doherty Associates" -Force
         New-ItemProperty $regPath -Name InstallLocation -Value $WorkingDir -Force
-        New-ItemProperty $regPath -Name UninstallString -Value "powershell.exe -noprofile -executionpolicy bypass -file `"$WingetUpdatePath\DAAU-Uninstall.ps1`"" -Force
-        New-ItemProperty $regPath -Name QuietUninstallString -Value "powershell.exe -noprofile -executionpolicy bypass -file `"$WingetUpdatePath\DAAU-Uninstall.ps1`"" -Force
+        New-ItemProperty $regPath -Name UninstallString -Value "powershell.exe -noprofile -executionpolicy bypass -file `"$WorkingDir\DAAU-Uninstall.ps1`"" -Force
+        New-ItemProperty $regPath -Name QuietUninstallString -Value "powershell.exe -noprofile -executionpolicy bypass -file `"$WorkingDir\DAAU-Uninstall.ps1`"" -Force
         New-ItemProperty $regPath -Name DAAU_UpdatePrerelease -Value 0 -PropertyType DWord -Force
 
         #log
