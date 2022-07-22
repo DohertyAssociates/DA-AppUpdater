@@ -1,0 +1,15 @@
+Microsoft.Edge
+Microsoft.EdgeWebView2Runtime
+Microsoft.Office
+Microsoft.OneDrive
+Microsoft.Teams
+Google.Chrome
+Google.Chrome.Dev
+Google.Chrome.Beta
+Mozilla.Firefox
+Mozilla.Firefox.ESR
+Mozilla.Firefox.Beta
+Mozilla.Firefox.DeveloperEdition
+TeamViewer.TeamViewer
+TeamViewer.TeamViewer.Host
+VideoLAN.VLC
