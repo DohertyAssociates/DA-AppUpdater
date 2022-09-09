@@ -38,17 +38,10 @@ Specify the Notification level: Full (Default, displays all notification), Succe
 .\Install-DAAppUpdater.ps1 -Silent -DoNotUpdate
 
 .EXAMPLE
-<<<<<<< HEAD
-.\winget-install-and-update.ps1 -Silent -UseWhiteList -DoNotUpdate
-
-.EXAMPLE
-.\winget-install-and-update.ps1 -Silent -UpdatesAtLogon -UpdatesInterval Weekly
-=======
 .\Install-DAAppUpdater.ps1 -Silent -UseWhiteList -DoNotUpdate
 
 .EXAMPLE
 .\Install-DAAppUpdater.ps1 -Silent -UpdatesAtLogon -UpdatesInterval Weekly
->>>>>>> 8c82678 (Initial Commit)
 #>
 
 [CmdletBinding()]
@@ -69,13 +62,10 @@ param(
 $Script:LogFile = "DAAppUpdater-$env:COMPUTERNAME.log"
 $Script:WebClient = New-Object System.Net.WebClient
 
-<<<<<<< HEAD
-=======
 <# APP INFO #>
 
 $DAUVersion = "1.5.2"
 
->>>>>>> 8c82678 (Initial Commit)
 <# FUNCTIONS #>
 function Start-DALogging {  
     # Create DA Directories
@@ -245,17 +235,10 @@ function Install-DAAppUpdater {
         New-Item $regPath -Force
         New-ItemProperty $regPath -Name DisplayName -Value "DA App Updater (DAAU)" -Force
         New-ItemProperty $regPath -Name DisplayIcon -Value "C:\ProgramData\DA-AppUpdater\icons\datray.ico" -Force
-<<<<<<< HEAD
-        New-ItemProperty $regPath -Name DisplayVersion -Value 1.5.0 -Force
-        New-ItemProperty $regPath -Name InstallLocation -Value $WingetUpdatePath -Force
-        New-ItemProperty $regPath -Name UninstallString -Value "powershell.exe -noprofile -executionpolicy bypass -file `"$WingetUpdatePath\DAAU-Uninstall.ps1`"" -Force
-        New-ItemProperty $regPath -Name QuietUninstallString -Value "powershell.exe -noprofile -executionpolicy bypass -file `"$WingetUpdatePath\DAAU-Uninstall.ps1`"" -Force
-=======
         New-ItemProperty $regPath -Name DisplayVersion -Value $DAUVersion -Force
         New-ItemProperty $regPath -Name InstallLocation -Value $DAAUPath -Force
         New-ItemProperty $regPath -Name UninstallString -Value "powershell.exe -noprofile -executionpolicy bypass -file `"$DAAUPath\DAAU-Uninstall.ps1`"" -Force
         New-ItemProperty $regPath -Name QuietUninstallString -Value "powershell.exe -noprofile -executionpolicy bypass -file `"$DAAUPath\DAAU-Uninstall.ps1`"" -Force
->>>>>>> 8c82678 (Initial Commit)
         New-ItemProperty $regPath -Name NoModify -Value 1 -Force
         New-ItemProperty $regPath -Name NoRepair -Value 1 -Force
         New-ItemProperty $regPath -Name VersionMajor -Value 1 -Force
