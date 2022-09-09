@@ -64,7 +64,7 @@ $Script:WebClient = New-Object System.Net.WebClient
 
 <# APP INFO #>
 
-$DAUVersion = "1.5.2"
+$DAUVersion = "1.5.3"
 
 <# FUNCTIONS #>
 function Start-DALogging {  
